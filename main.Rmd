@@ -52,3 +52,24 @@ test$Cabin.deck <- gsub(pattern = "^(\\D)(\\d{0,3}).*$", x=test$Cabin, replaceme
 test$Cabin.deck <- as.factor(test$Cabin.deck)
 test$Cabin.room <- gsub(pattern = "^(\\D)(\\d{0,3}).*$", x=test$Cabin, replacement="\\2", ignore.case=TRUE, perl = TRUE)
 ```
+```{r}
+train$Name <- NULL
+train$Name.surname <- NULL
+train$Cabin <- NULL
+train$Cabin.room <- NULL
+train$Ticket <- NULL
+train$Fare <- NULL
+train$Ticket.number <- NULL
+train$Ticket.initials <- NULL
+train$PassengerId <- NULL
+
+test$Name <- NULL
+test$Name.surname <- NULL
+test$Cabin <- NULL
+test$Cabin. <- NULL
+test$Ticket <- NULL
+test$Fare <- NULL
+test$Ticket.number <- NULL
+test$Ticket.initials <- NULL
+test$PassengerId <- NULL
+```
