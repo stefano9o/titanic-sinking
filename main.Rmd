@@ -87,3 +87,10 @@ df <- train.train
 library(Amelia)
 missmap(df, col=c('grey', 'steelblue'), y.cex=0.5, x.cex=0.8)
 ```
+```{r}
+library(mice)
+set.seed(5102)
+imp.df <- mice(df, method='rf', printFlag=FALSE)
+df <- complete(imp.df)
+# missmap(df, col=c('grey', 'steelblue'), y.cex=0.5, x.cex=0.8)
+```
