@@ -41,3 +41,14 @@ test$Name.surname <- gsub(pattern = "([\\w|\\-| |']*), ([\\w| ]*\\.) (.*)", x=te
 test$Name.title <- gsub(pattern = "([\\w|\\-| |']*), ([\\w| ]*\\.) (.*)", x=test$Name, replacement="\\2", ignore.case=TRUE, perl = TRUE)
 test$Name.title <- as.factor(test$Name.title)
 ```
+```{r}
+train$Cabin[is.na(train$Cabin)] <- "U" # Unknown
+train$Cabin.deck <- gsub(pattern = "^(\\D)(\\d{0,3}).*$", x=train$Cabin, replacement="\\1", ignore.case=TRUE, perl = TRUE)
+train$Cabin.deck <- as.factor(train$Cabin.deck)
+train$Cabin.room <- gsub(pattern = "^(\\D)(\\d{0,3}).*$", x=train$Cabin, replacement="\\2", ignore.case=TRUE, perl = TRUE)
+
+test$Cabin[is.na(test$Cabin)] <- "U" # Unknown
+test$Cabin.deck <- gsub(pattern = "^(\\D)(\\d{0,3}).*$", x=test$Cabin, replacement="\\1", ignore.case=TRUE, perl = TRUE)
+test$Cabin.deck <- as.factor(test$Cabin.deck)
+test$Cabin.room <- gsub(pattern = "^(\\D)(\\d{0,3}).*$", x=test$Cabin, replacement="\\2", ignore.case=TRUE, perl = TRUE)
+```
