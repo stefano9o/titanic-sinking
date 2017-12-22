@@ -1,0 +1,11 @@
+---
+title: "Titanic sinking"
+author: "Stefano Galeano"
+date: "19 dicembre 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
