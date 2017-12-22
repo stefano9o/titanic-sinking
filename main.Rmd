@@ -19,3 +19,16 @@ test <- read.csv('test.csv', header = TRUE,stringsAsFactors = FALSE, na.strings 
 test$Sex <- as.factor(test$Sex)
 test$Embarked <- as.factor(test$Embarked)
 ```
+```{r}
+train$Ticket.initials <- gsub(pattern = "^((.*) )?(\\d*)?$", x=train$Ticket, replacement="\\2")
+train$Ticket.initials <- as.factor(train$Ticket.initial)
+train$Ticket.number <- gsub(pattern = "^((.*) )?(\\d*)?$", x=train$Ticket, replacement="\\3")
+train$Ticket.number <- gsub(pattern = "^LINE$", x=train$Ticket.number, replacement="0")
+train$Ticket.number <- as.integer(train$Ticket.number)
+
+test$Ticket.initials <- gsub(pattern = "^((.*) )?(\\d*)?$", x=test$Ticket, replacement="\\2")
+test$Ticket.initials <- as.factor(test$Ticket.initial)
+test$Ticket.number <- gsub(pattern = "^((.*) )?(\\d*)?$", x=test$Ticket, replacement="\\3")
+test$Ticket.number <- gsub(pattern = "^LINE$", x=test$Ticket.number, replacement="0")
+test$Ticket.number <- as.integer(test$Ticket.number)
+```
