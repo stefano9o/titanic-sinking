@@ -9,3 +9,13 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+```{r}
+train <- read.csv('train.csv', header = TRUE, stringsAsFactors = FALSE, na.strings = c(""))
+train$Survived <- as.factor(train$Survived)
+train$Sex <- as.factor(train$Sex)
+train$Embarked <- as.factor(train$Embarked)
+
+test <- read.csv('test.csv', header = TRUE,stringsAsFactors = FALSE, na.strings = c(""))
+test$Sex <- as.factor(test$Sex)
+test$Embarked <- as.factor(test$Embarked)
+```
