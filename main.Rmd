@@ -73,3 +73,13 @@ test$Ticket.number <- NULL
 test$Ticket.initials <- NULL
 test$PassengerId <- NULL
 ```
+```{r}
+library(caret)
+
+set.seed(4974)
+inTrain <- createDataPartition(train$Survived,p=.75,list = FALSE)
+
+train.train <- train[inTrain,]
+train.test <- train[-inTrain,]
+df <- train.train
+```
