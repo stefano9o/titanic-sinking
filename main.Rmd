@@ -94,3 +94,13 @@ imp.df <- mice(df, method='rf', printFlag=FALSE)
 df <- complete(imp.df)
 # missmap(df, col=c('grey', 'steelblue'), y.cex=0.5, x.cex=0.8)
 ```
+```{r}
+set.seed(72034)
+
+ctrl <- trainControl(method = "cv")
+model <- train(Survived~.,data = df,method="bayesglm", trControl = ctrl)
+predicted <- predict(model)
+
+model
+confusionMatrix(predicted,df$Survived)
+```
