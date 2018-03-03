@@ -75,6 +75,7 @@ test$Fare <- NULL
 test$Ticket.number <- NULL
 test$Ticket.initials <- NULL
 ```
+```{r, message=FALSE}
 library(caret)
 
 set.seed(4974)
@@ -84,6 +85,7 @@ train.train <- train[inTrain,]
 train.test <- train[-inTrain,]
 df <- train.train
 ```
+```{r, message=FALSE}
 library(Amelia)
 missmap(df, col=c('grey', 'steelblue'), y.cex=0.5, x.cex=0.8)
 ```
