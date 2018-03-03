@@ -99,7 +99,7 @@ df <- complete(imp.df)
 ```{r}
 set.seed(72034)
 
-ctrl <- trainControl(method = "cv")
+ctrl <- trainControl(method = "cv") # cross validation using 10-fold method
 model <- train(Survived~.,data = df,method="bayesglm", trControl = ctrl)
 predicted <- predict(model)
 
