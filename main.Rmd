@@ -40,6 +40,9 @@ train$Name.title <- as.factor(train$Name.title)
 test$Name.surname <- gsub(pattern = "([\\w|\\-| |']*), ([\\w| ]*\\.) (.*)", x=test$Name, replacement="\\1", ignore.case=TRUE, perl = TRUE)
 test$Name.title <- gsub(pattern = "([\\w|\\-| |']*), ([\\w| ]*\\.) (.*)", x=test$Name, replacement="\\2", ignore.case=TRUE, perl = TRUE)
 test$Name.title <- as.factor(test$Name.title)
+
+# used in order to avoid error when predicting in the test dataset
+levels(train$Name.title) <- union(levels(train$Name.title),levels(test$Name.title))
 ```
 ```{r}
 train$Cabin[is.na(train$Cabin)] <- "U" # Unknown
