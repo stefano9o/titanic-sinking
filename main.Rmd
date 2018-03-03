@@ -165,6 +165,6 @@ imp.df <- mice(df, method='rf', printFlag=FALSE)
 df <- complete(imp.df)
 
 predicted <- predict(model,df)
-write.csv(data.frame(PassegnerId = test$PassengerId,Survived = predicted),"solution.csv",row.names = FALSE)
+write.csv(data.frame(PassengerId = test$PassengerId,Survived = predicted),"solution.csv",row.names = FALSE)
 ```
 
