@@ -103,6 +103,5 @@ ctrl <- trainControl(method = "cv") # cross validation using 10-fold method
 model <- train(Survived~.,data = df,method="bayesglm", trControl = ctrl)
 predicted <- predict(model)
 
-model
 confusionMatrix(predicted,df$Survived)
 ```
