@@ -74,7 +74,6 @@ test$Ticket <- NULL
 test$Fare <- NULL
 test$Ticket.number <- NULL
 test$Ticket.initials <- NULL
-test$PassengerId <- NULL
 ```
 library(caret)
 
