@@ -9,6 +9,12 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+## Introduction
+
+## Getting and cleaning data
+
+The train/test datasetsa are loaded, treating whitespaces as NA, and coercing the opportune features into factors:
+
 ```{r}
 train <- read.csv('train.csv', header = TRUE, stringsAsFactors = FALSE, na.strings = c(""))
 train$Survived <- as.factor(train$Survived)
@@ -19,6 +25,9 @@ test <- read.csv('test.csv', header = TRUE,stringsAsFactors = FALSE, na.strings 
 test$Sex <- as.factor(test$Sex)
 test$Embarked <- as.factor(test$Embarked)
 ```
+
+The `ticket` feature is splitted in two: 
+
 ```{r}
 train$Ticket.initials <- gsub(pattern = "^((.*) )?(\\d*)?$", x=train$Ticket, replacement="\\2")
 train$Ticket.initials <- as.factor(train$Ticket.initial)
@@ -32,6 +41,9 @@ test$Ticket.number <- gsub(pattern = "^((.*) )?(\\d*)?$", x=test$Ticket, replace
 test$Ticket.number <- gsub(pattern = "^LINE$", x=test$Ticket.number, replacement="0")
 test$Ticket.number <- as.integer(test$Ticket.number)
 ```
+
+The `Title` is estracted from the `Name` feature:
+
 ```{r}
 train$Name.surname <- gsub(pattern = "([\\w|\\-| |']*), ([\\w| ]*\\.) (.*)", x=train$Name, replacement="\\1", ignore.case=TRUE, perl = TRUE)
 train$Name.title <- gsub(pattern = "([\\w|\\-| |']*), ([\\w| ]*\\.) (.*)", x=train$Name, replacement="\\2", ignore.case=TRUE, perl = TRUE)
@@ -44,6 +56,9 @@ test$Name.title <- as.factor(test$Name.title)
 # used in order to avoid error when predicting in the test dataset
 levels(train$Name.title) <- union(levels(train$Name.title),levels(test$Name.title))
 ```
+
+The `Cabin` feature is splitted in two:
+
 ```{r}
 train$Cabin[is.na(train$Cabin)] <- "U" # Unknown
 train$Cabin.deck <- gsub(pattern = "^(\\D)(\\d{0,3}).*$", x=train$Cabin, replacement="\\1", ignore.case=TRUE, perl = TRUE)
@@ -55,6 +70,9 @@ test$Cabin.deck <- gsub(pattern = "^(\\D)(\\d{0,3}).*$", x=test$Cabin, replaceme
 test$Cabin.deck <- as.factor(test$Cabin.deck)
 test$Cabin.room <- gsub(pattern = "^(\\D)(\\d{0,3}).*$", x=test$Cabin, replacement="\\2", ignore.case=TRUE, perl = TRUE)
 ```
+
+After doing some feature selection, the following one are removed for the analysis:
+
 ```{r}
 train$Name <- NULL
 train$Name.surname <- NULL
@@ -75,6 +93,11 @@ test$Fare <- NULL
 test$Ticket.number <- NULL
 test$Ticket.initials <- NULL
 ```
+
+# Exploratory analysis
+
+The train is partioned in train and test dataset in order to avoid overfitting and calculate an out-of-sample estimation error in the end:
+
 ```{r, message=FALSE}
 library(caret)
 
@@ -85,10 +108,16 @@ train.train <- train[inTrain,]
 train.test <- train[-inTrain,]
 df <- train.train
 ```
+
+Below, it's plotted a map for the missing value: 
+
 ```{r, message=FALSE}
 library(Amelia)
 missmap(df, col=c('grey', 'steelblue'), y.cex=0.5, x.cex=0.8)
 ```
+
+The messing value are imputed using the `mice` method:
+
 ```{r}
 library(mice)
 set.seed(5102)
@@ -96,6 +125,9 @@ imp.df <- mice(df, method='rf', printFlag=FALSE)
 df <- complete(imp.df)
 # missmap(df, col=c('grey', 'steelblue'), y.cex=0.5, x.cex=0.8)
 ```
+
+The Model is then trained using *k-fold* cross validation in order to avoid overfitting:
+
 ```{r}
 set.seed(72034)
 
@@ -105,6 +137,9 @@ predicted <- predict(model)
 
 confusionMatrix(predicted,df$Survived)
 ```
+
+The model is used to predict the outcome in the test dataset in order to estimate the out of sample error:
+
 ```{r, warning=FALSE}
 df = train.test
 
@@ -117,6 +152,9 @@ predicted <- predict(model,df)
 
 confusionMatrix(predicted,df$Survived)
 ```
+
+Finaly the model is used to predict the output in the test dataset:
+
 ```{r,warning=FALSE}
 df = test
         
@@ -129,3 +167,4 @@ df <- complete(imp.df)
 predicted <- predict(model,df)
 write.csv(data.frame(passegnerId = test$PassengerId,predicted),"solution.csv",row.names = FALSE)
 ```
+
