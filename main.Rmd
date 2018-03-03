@@ -76,7 +76,6 @@ test$Ticket.number <- NULL
 test$Ticket.initials <- NULL
 test$PassengerId <- NULL
 ```
-```{r}
 library(caret)
 
 set.seed(4974)
