@@ -117,3 +117,15 @@ predicted <- predict(model,df)
 
 confusionMatrix(predicted,df$Survived)
 ```
+```{r,warning=FALSE}
+df = test
+        
+set.seed(5102)
+
+# imputing NA using the same method used for the training set
+imp.df <- mice(df, method='rf', printFlag=FALSE)
+df <- complete(imp.df)
+
+predicted <- predict(model,df)
+write.csv(data.frame(passegnerId = test$PassengerId,predicted),"solution.csv",row.names = FALSE)
+```
