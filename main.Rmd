@@ -84,7 +84,6 @@ train.train <- train[inTrain,]
 train.test <- train[-inTrain,]
 df <- train.train
 ```
-```{r}
 library(Amelia)
 missmap(df, col=c('grey', 'steelblue'), y.cex=0.5, x.cex=0.8)
 ```
