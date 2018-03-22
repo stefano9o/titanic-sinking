@@ -96,7 +96,34 @@ full <- full %>% mutate(
 
 
 full$Title <- as.factor(full$Title)
+### Missing Value imputation
+
+#### Age feature
+
+Let's have a look at the distributions for each `Title`:
+
+```{r}
+g <- ggplot(data = full, aes(Age))
+g <- g + geom_bar(binwidth = 1)
+g <- g + labs("Missing values ranking [%]", "Feature", "Missing Values [%]") + theme_bw()
+g + facet_grid(Title~., scales = "free")
 ```
+
+Since the result obtained with the last plot, it seems reasonable to use the median in the `Title` group of appartenency for the `Age`:
+
+```{r}
+full <- full %>% group_by(Title) %>% mutate(Age.mdn = median(Age,na.rm = TRUE))
+
+full <- full %>% mutate(
+        Age = if_else(is.na(Age),
+                      Age.mdn,
+                      Age
+                      )
+)
+```
+
+
+#### Embarked feature
 
 The `ticket` feature is splitted in two: 
 
@@ -106,7 +133,18 @@ full$Ticket.initials <- as.factor(full$Ticket.initials)
 full$Ticket.number <- gsub(pattern = "^((.*) )?(\\d*)?$", x=full$Ticket, replacement="\\3")
 full$Ticket.number <- gsub(pattern = "^LINE$", x=full$Ticket.number, replacement="0")
 full$Ticket.number <- as.integer(full$Ticket.number)
+```
 
+```{r}
+full[is.na(full$Embarked),]
+
+g <- ggplot(data = full, aes(Embarked,Ticket.number))
+g <- g + geom_boxplot() + ylim(0, 400000)
+g <- g + labs("", "", "") + theme_bw()
+g
+```
+
+```{r}
 full$Embarked <- as.factor(if_else(is.na(full$Embarked),"S",as.character(full$Embarked)))
 ```
 
@@ -167,23 +205,6 @@ train.test <- train[-inTrain,]
 df <- train.train
 ```
 
-Below, it's plotted a map for the missing value: 
-
-```{r, message=FALSE}
-library(Amelia)
-missmap(df, col=c('grey', 'steelblue'), y.cex=0.5, x.cex=0.8)
-```
-
-The messing value are imputed using the `mice` method:
-
-```{r}
-library(mice)
-set.seed(5102)
-imp.df <- mice(df, method='rf', printFlag=FALSE)
-df <- complete(imp.df)
-# missmap(df, col=c('grey', 'steelblue'), y.cex=0.5, x.cex=0.8)
-```
-
 The Model is then trained using *k-fold* cross validation in order to avoid overfitting:
 
 ```{r}
@@ -203,11 +224,7 @@ df = train.test
 
 set.seed(5102)
 
-# imputing NA using the same method used for the training set
-imp.df <- mice(df, method='rf', printFlag=FALSE)
-df <- complete(imp.df)
 predicted <- predict(model,df)
-
 confusionMatrix(predicted,df$Survived)
 ```
 
@@ -217,10 +234,6 @@ Finaly the model is used to predict the output in the test dataset:
 df = test
         
 set.seed(5102)
-
-# imputing NA using the same method used for the training set
-imp.df <- mice(df, method='rf', printFlag=FALSE)
-df <- complete(imp.df)
 
 predicted <- predict(model,df)
 write.csv(data.frame(PassengerId = test$PassengerId,Survived = predicted),"solution.csv",row.names = FALSE)
