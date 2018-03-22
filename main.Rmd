@@ -35,6 +35,25 @@ full$Survived <- as.factor(full$Survived)
 full$Sex <- as.factor(full$Sex)
 full$Embarked <- as.factor(full$Embarked)
 ```
+
+Missing value analysis:
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+missingValue <- sapply(full, function(feature){
+        sum(is.na(feature))/length(feature)
+}) 
+missingValue = data.frame(missingValuePercentage = missingValue, feature = names(missingValue))
+
+g <- ggplot(data = filter(missingValue,feature!="Survived" & missingValuePercentage != 0), 
+            aes(reorder(feature, missingValuePercentage),missingValuePercentage))
+g <- g + geom_bar(stat = "identity", fill="red")
+g <- g + coord_flip() + labs("Missing values ranking [%]", "Feature", "Missing Values [%]") + theme_bw()
+g
+```
+
 ```{r}
 full$Name.title <- gsub(pattern = "([\\w|\\-| |']*), ([\\w| ]*\\.) (.*)", x=full$Name, replacement="\\2", ignore.case=TRUE, perl = TRUE)
 table(full$Name.title)
