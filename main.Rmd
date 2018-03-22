@@ -17,41 +17,89 @@ The train/test datasetsa are loaded, treating whitespaces as NA, and coercing th
 
 ```{r}
 train <- read.csv('train.csv', header = TRUE, stringsAsFactors = FALSE, na.strings = c(""))
-train$Survived <- as.factor(train$Survived)
-train$Sex <- as.factor(train$Sex)
-train$Embarked <- as.factor(train$Embarked)
-
+train$Set = "train"
 test <- read.csv('test.csv', header = TRUE,stringsAsFactors = FALSE, na.strings = c(""))
-test$Sex <- as.factor(test$Sex)
-test$Embarked <- as.factor(test$Embarked)
+test$Set = "test"
+
+## Cleaning Data
+
+In order to streamline the process, we're going to merge the train and test datasets, we'll therfore to add add the `Survived` variable in the test dataset:
+
+```{r}
+test$Survived <- NA
+full <- rbind(train,test)
+```
+```{r}
+# Feature coercing
+full$Survived <- as.factor(full$Survived)
+full$Sex <- as.factor(full$Sex)
+full$Embarked <- as.factor(full$Embarked)
+```
+```{r}
+full$Name.title <- gsub(pattern = "([\\w|\\-| |']*), ([\\w| ]*\\.) (.*)", x=full$Name, replacement="\\2", ignore.case=TRUE, perl = TRUE)
+table(full$Name.title)
+```
+```{r}
+full <- full %>% mutate(
+        Title = case_when(
+                # Young boy less then 18 years old
+                Name.title == "Master."                         ~ "Master",
+
+                # Girl or unmarried women
+                Name.title == "Miss." | 
+                Name.title == "Mlle."                           ~ "Miss",
+                
+                # Women married
+                Name.title == "Mrs."  | 
+                Name.title == "Mme."  |
+                Name.title == "Dona."                           ~ "Mrs",
+
+                # Women with unspecified status
+                Name.title == "Ms."           |
+                Name.title == "Lady."         |
+                Name.title == "the Countess." |
+                Name.title == "Dr." & Sex == "female"           ~ "Mrs", # In this group because there are too few observation
+                
+                # Men
+                Name.title == "Mr."       |
+                Name.title == "Sir."      |
+                Name.title == "Rev."      |
+                Name.title == "Don."      |
+                Name.title == "Jonkheer." |            
+                Name.title == "Dr." & Sex == "male"             ~ "Mr",
+                
+                # Crew
+                Name.title == "Capt." |
+                Name.title == "Col."  |
+                Name.title == "Major."                          ~ "Officer"
+                )
+)
+
+
+full$Title <- as.factor(full$Title)
 ```
 
 The `ticket` feature is splitted in two: 
 
 ```{r}
-train$Ticket.initials <- gsub(pattern = "^((.*) )?(\\d*)?$", x=train$Ticket, replacement="\\2")
-train$Ticket.initials <- as.factor(train$Ticket.initial)
-train$Ticket.number <- gsub(pattern = "^((.*) )?(\\d*)?$", x=train$Ticket, replacement="\\3")
-train$Ticket.number <- gsub(pattern = "^LINE$", x=train$Ticket.number, replacement="0")
-train$Ticket.number <- as.integer(train$Ticket.number)
+full$Ticket.initials <- gsub(pattern = "^((.*) )?(\\d*)?$", x=full$Ticket, replacement="\\2")
+full$Ticket.initials <- as.factor(full$Ticket.initials)
+full$Ticket.number <- gsub(pattern = "^((.*) )?(\\d*)?$", x=full$Ticket, replacement="\\3")
+full$Ticket.number <- gsub(pattern = "^LINE$", x=full$Ticket.number, replacement="0")
+full$Ticket.number <- as.integer(full$Ticket.number)
 
-test$Ticket.initials <- gsub(pattern = "^((.*) )?(\\d*)?$", x=test$Ticket, replacement="\\2")
-test$Ticket.initials <- as.factor(test$Ticket.initial)
-test$Ticket.number <- gsub(pattern = "^((.*) )?(\\d*)?$", x=test$Ticket, replacement="\\3")
-test$Ticket.number <- gsub(pattern = "^LINE$", x=test$Ticket.number, replacement="0")
-test$Ticket.number <- as.integer(test$Ticket.number)
+full$Embarked <- as.factor(if_else(is.na(full$Embarked),"S",as.character(full$Embarked)))
 ```
 
 The `Title` is estracted from the `Name` feature:
 
 ```{r}
-train$Name.surname <- gsub(pattern = "([\\w|\\-| |']*), ([\\w| ]*\\.) (.*)", x=train$Name, replacement="\\1", ignore.case=TRUE, perl = TRUE)
-train$Name.title <- gsub(pattern = "([\\w|\\-| |']*), ([\\w| ]*\\.) (.*)", x=train$Name, replacement="\\2", ignore.case=TRUE, perl = TRUE)
-train$Name.title <- as.factor(train$Name.title)
+# full$Cabin[is.na(full$Cabin)] <- "U" # Unknown
+# full$Cabin.deck <- gsub(pattern = "^(\\D)(\\d{0,3}).*$", x=full$Cabin, replacement="\\1", ignore.case=TRUE, perl = TRUE)
+# full$Cabin.deck <- as.factor(full$Cabin.deck)
+# full$Cabin.room <- gsub(pattern = "^(\\D)(\\d{0,3}).*$", x=full$Cabin, replacement="\\2", ignore.case=TRUE, perl = TRUE)
+full$Cabin <- NULL
 
-test$Name.surname <- gsub(pattern = "([\\w|\\-| |']*), ([\\w| ]*\\.) (.*)", x=test$Name, replacement="\\1", ignore.case=TRUE, perl = TRUE)
-test$Name.title <- gsub(pattern = "([\\w|\\-| |']*), ([\\w| ]*\\.) (.*)", x=test$Name, replacement="\\2", ignore.case=TRUE, perl = TRUE)
-test$Name.title <- as.factor(test$Name.title)
 
 # used in order to avoid error when predicting in the test dataset
 levels(train$Name.title) <- union(levels(train$Name.title),levels(test$Name.title))
@@ -65,10 +113,10 @@ train$Cabin.deck <- gsub(pattern = "^(\\D)(\\d{0,3}).*$", x=train$Cabin, replace
 train$Cabin.deck <- as.factor(train$Cabin.deck)
 train$Cabin.room <- gsub(pattern = "^(\\D)(\\d{0,3}).*$", x=train$Cabin, replacement="\\2", ignore.case=TRUE, perl = TRUE)
 
-test$Cabin[is.na(test$Cabin)] <- "U" # Unknown
-test$Cabin.deck <- gsub(pattern = "^(\\D)(\\d{0,3}).*$", x=test$Cabin, replacement="\\1", ignore.case=TRUE, perl = TRUE)
-test$Cabin.deck <- as.factor(test$Cabin.deck)
-test$Cabin.room <- gsub(pattern = "^(\\D)(\\d{0,3}).*$", x=test$Cabin, replacement="\\2", ignore.case=TRUE, perl = TRUE)
+train <- full[full$Set == "train",]
+test <- full[full$Set == "test",]
+train$Set <- NULL
+test$Set <- NULL
 ```
 
 After doing some feature selection, the following one are removed for the analysis:
@@ -83,15 +131,6 @@ train$Fare <- NULL
 train$Ticket.number <- NULL
 train$Ticket.initials <- NULL
 train$PassengerId <- NULL
-
-test$Name <- NULL
-test$Name.surname <- NULL
-test$Cabin <- NULL
-test$Cabin. <- NULL
-test$Ticket <- NULL
-test$Fare <- NULL
-test$Ticket.number <- NULL
-test$Ticket.initials <- NULL
 ```
 
 # Exploratory analysis
