@@ -1,5 +1,5 @@
 ---
-title: "Titanic sinking"
+title: "My first kernel for the Titanic sinking competition"
 author: "Stefano Galeano"
 date: "19 dicembre 2017"
 output: html_document
@@ -11,15 +11,18 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Introduction
 
-## Getting and cleaning data
+This is my first kernel.
 
-The train/test datasetsa are loaded, treating whitespaces as NA, and coercing the opportune features into factors:
+## Getting data
+
+The train/test datasetsa are loaded, treating whitespaces as NA and coercing the opportune features into factors:
 
 ```{r}
 train <- read.csv('train.csv', header = TRUE, stringsAsFactors = FALSE, na.strings = c(""))
 train$Set = "train"
 test <- read.csv('test.csv', header = TRUE,stringsAsFactors = FALSE, na.strings = c(""))
 test$Set = "test"
+```
 
 ## Cleaning Data
 
@@ -29,6 +32,7 @@ In order to streamline the process, we're going to merge the train and test data
 test$Survived <- NA
 full <- rbind(train,test)
 ```
+
 ```{r}
 # Feature coercing
 full$Survived <- as.factor(full$Survived)
@@ -54,10 +58,19 @@ g <- g + coord_flip() + labs("Missing values ranking [%]", "Feature", "Missing V
 g
 ```
 
+## Data manipulation
+
+### Feature enginnering 1: The title 
+
+Each `Name` contains the title which is rappresentative of the family status, and also allow us to discrimanate between the crew and the others:
+
 ```{r}
 full$Name.title <- gsub(pattern = "([\\w|\\-| |']*), ([\\w| ]*\\.) (.*)", x=full$Name, replacement="\\2", ignore.case=TRUE, perl = TRUE)
 table(full$Name.title)
 ```
+
+Since we want to avoid overfitting, the less frequent titles are pooled in more common ones:
+
 ```{r}
 full <- full %>% mutate(
         Title = case_when(
@@ -96,6 +109,13 @@ full <- full %>% mutate(
 
 
 full$Title <- as.factor(full$Title)
+
+g <- ggplot(full, aes(full$Title))
+g <- g + geom_bar(color="red", fill="blue")
+g <- g + coord_flip() + labs("Passenger titles", "Title", "Count") + theme_bw()
+g
+```
+
 ### Missing Value imputation
 
 #### Age feature
@@ -148,7 +168,9 @@ g
 full$Embarked <- as.factor(if_else(is.na(full$Embarked),"S",as.character(full$Embarked)))
 ```
 
-The `Title` is estracted from the `Name` feature:
+#### Cabin feature
+
+Since the high number of missing value for the `Cabin` feature we're going to remove it:
 
 ```{r}
 # full$Cabin[is.na(full$Cabin)] <- "U" # Unknown
@@ -156,43 +178,63 @@ The `Title` is estracted from the `Name` feature:
 # full$Cabin.deck <- as.factor(full$Cabin.deck)
 # full$Cabin.room <- gsub(pattern = "^(\\D)(\\d{0,3}).*$", x=full$Cabin, replacement="\\2", ignore.case=TRUE, perl = TRUE)
 full$Cabin <- NULL
-
-
-# used in order to avoid error when predicting in the test dataset
-levels(train$Name.title) <- union(levels(train$Name.title),levels(test$Name.title))
 ```
 
-The `Cabin` feature is splitted in two:
+
+## Feature engineering
+
 
 ```{r}
-train$Cabin[is.na(train$Cabin)] <- "U" # Unknown
-train$Cabin.deck <- gsub(pattern = "^(\\D)(\\d{0,3}).*$", x=train$Cabin, replacement="\\1", ignore.case=TRUE, perl = TRUE)
-train$Cabin.deck <- as.factor(train$Cabin.deck)
-train$Cabin.room <- gsub(pattern = "^(\\D)(\\d{0,3}).*$", x=train$Cabin, replacement="\\2", ignore.case=TRUE, perl = TRUE)
+full$Family.count <- full$Parch + full$SibSp
+g <- ggplot(data = full[!is.na(full$Survived),], aes(Family.count, fill = Survived))
+g <- g + geom_histogram(position = "stack",binwidth = 1)
+g
+```
 
+
+```{r}
+full <- full %>% mutate(
+        Family.size = case_when(
+                Family.count == 0                   ~ "alone",
+                Family.count > 0 & Family.count < 4 ~ "medium",
+                Family.count > 3                    ~ "big"
+                )
+        )
+full$Family.size <- as.factor(full$Family.size)
+```
+
+
+
+# Exploratory analysis
+
+The train is partioned in train and test dataset in order to avoid overfitting and calculate an out-of-sample estimation error in the end:
+
+```{r}
 train <- full[full$Set == "train",]
 test <- full[full$Set == "test",]
 train$Set <- NULL
 test$Set <- NULL
 ```
 
+
 After doing some feature selection, the following one are removed for the analysis:
 
 ```{r}
+train$SibSp <- NULL
+train$Parch <- NULL
+train$Family.count <- NULL
 train$Name <- NULL
 train$Name.surname <- NULL
+train$Name.title <- NULL
 train$Cabin <- NULL
 train$Cabin.room <- NULL
 train$Ticket <- NULL
 train$Fare <- NULL
+train$Age.mdn <- NULL
 train$Ticket.number <- NULL
 train$Ticket.initials <- NULL
 train$PassengerId <- NULL
 ```
-
-# Exploratory analysis
-
-The train is partioned in train and test dataset in order to avoid overfitting and calculate an out-of-sample estimation error in the end:
 
 ```{r, message=FALSE}
 library(caret)
@@ -202,6 +244,8 @@ inTrain <- createDataPartition(train$Survived,p=.75,list = FALSE)
 
 train.train <- train[inTrain,]
 train.test <- train[-inTrain,]
+str(train.train$Title)
+str(train.test$Title)
 df <- train.train
 ```
 
