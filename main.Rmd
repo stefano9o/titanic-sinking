@@ -15,23 +15,20 @@ This is my first kernel.
 
 ## Getting data
 
-The train/test datasetsa are loaded, treating whitespaces as NA and coercing the opportune features into factors:
+The train/test datasets are loaded in R:
 
 ```{r}
 train <- read.csv('train.csv', header = TRUE, stringsAsFactors = FALSE, na.strings = c(""))
 train$Set = "train"
 test <- read.csv('test.csv', header = TRUE,stringsAsFactors = FALSE, na.strings = c(""))
 test$Set = "test"
+
+# In order to streamline the process, the train and test datasets are binded
+test$Survived <- NA # this is needed in order make possible the binding
+full <- rbind(train,test)
 ```
 
 ## Cleaning Data
-
-In order to streamline the process, we're going to merge the train and test datasets, we'll therfore to add add the `Survived` variable in the test dataset:
-
-```{r}
-test$Survived <- NA
-full <- rbind(train,test)
-```
 
 ```{r}
 # Feature coercing
