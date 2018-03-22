@@ -15,23 +15,22 @@ This is my first kernel.
 
 ## Getting data
 
-The train/test datasetsa are loaded, treating whitespaces as NA and coercing the opportune features into factors:
+The train/test datasets are loaded in R:
 
 ```{r}
 train <- read.csv('train.csv', header = TRUE, stringsAsFactors = FALSE, na.strings = c(""))
 train$Set = "train"
 test <- read.csv('test.csv', header = TRUE,stringsAsFactors = FALSE, na.strings = c(""))
 test$Set = "test"
+
+# In order to streamline the process, the train and test datasets are binded
+test$Survived <- NA # this is needed in order make possible the binding
+full <- rbind(train,test)
 ```
 
 ## Cleaning Data
 
-In order to streamline the process, we're going to merge the train and test datasets, we'll therfore to add add the `Survived` variable in the test dataset:
-
-```{r}
-test$Survived <- NA
-full <- rbind(train,test)
-```
+The following features need to be coerced into factor variable:
 
 ```{r}
 # Feature coercing
@@ -40,7 +39,9 @@ full$Sex <- as.factor(full$Sex)
 full$Embarked <- as.factor(full$Embarked)
 ```
 
-Missing value analysis:
+### Missing value analysis:
+
+Let's first have a look at the percentage of missing value for each feature:
 
 ```{r}
 library(dplyr)
@@ -58,18 +59,27 @@ g <- g + coord_flip() + labs("Missing values ranking [%]", "Feature", "Missing V
 g
 ```
 
-## Data manipulation
+#### Extracting the title from the the Name feature 
 
-### Feature enginnering 1: The title 
+From the `Name` feature is possible to extract the title. The idea is to use the feature in order to:
++ better understand the family status (married or maiden)
++ is part of the crew
++ help us to handle the NA for the `Age` feature
 
-Each `Name` contains the title which is rappresentative of the family status, and also allow us to discrimanate between the crew and the others:
+Each `Name` is of the form `String, Title. String`, and using regex we can extract the Title part:
 
 ```{r}
+head(full$Name)
 full$Name.title <- gsub(pattern = "([\\w|\\-| |']*), ([\\w| ]*\\.) (.*)", x=full$Name, replacement="\\2", ignore.case=TRUE, perl = TRUE)
+```
+
+Let's have a look at the titles and their frequency:
+
+```{r}
 table(full$Name.title)
 ```
 
-Since we want to avoid overfitting, the less frequent titles are pooled in more common ones:
+Since we want to avoid overfitting, the less frequent titles are pooled in the more common ones:
 
 ```{r}
 full <- full %>% mutate(
@@ -109,18 +119,33 @@ full <- full %>% mutate(
 
 
 full$Title <- as.factor(full$Title)
+```
 
+Below it's shown the new histogram of the `Title` feature just created
+```{r}
 g <- ggplot(full, aes(full$Title))
 g <- g + geom_bar(color="red", fill="blue")
 g <- g + coord_flip() + labs("Passenger titles", "Title", "Count") + theme_bw()
 g
 ```
 
+# Extracting the ticket number from the Ticked feature
+
+Using the same approch used for the Title (checking the form and using regex), the `Ticket.number` is extracted: 
+
+```{r}
+# full$Ticket.initials <- gsub(pattern = "^((.*) )?(\\d*)?$", x=full$Ticket, replacement="\\2")
+# full$Ticket.initials <- as.factor(full$Ticket.initials)
+full$Ticket.number <- gsub(pattern = "^((.*) )?(\\d*)?$", x=full$Ticket, replacement="\\3")
+full$Ticket.number <- gsub(pattern = "^LINE$", x=full$Ticket.number, replacement="0")
+full$Ticket.number <- as.integer(full$Ticket.number)
+```
+
 ### Missing Value imputation
 
 #### Age feature
 
-Let's have a look at the distributions for each `Title`:
+By looking at the `Age` distribution for each `Title`:
 
 ```{r}
 g <- ggplot(data = full, aes(Age))
@@ -129,7 +154,7 @@ g <- g + labs("Missing values ranking [%]", "Feature", "Missing Values [%]") + t
 g + facet_grid(Title~., scales = "free")
 ```
 
-Since the result obtained with the last plot, it seems reasonable to use the median in the `Title` group of appartenency for the `Age`:
+it seems reasonable to use the median `Age` in the `Title` group of appartenency.
 
 ```{r}
 full <- full %>% group_by(Title) %>% mutate(Age.mdn = median(Age,na.rm = TRUE))
@@ -142,18 +167,8 @@ full <- full %>% mutate(
 )
 ```
 
-
 #### Embarked feature
 
-The `ticket` feature is splitted in two: 
-
-```{r}
-full$Ticket.initials <- gsub(pattern = "^((.*) )?(\\d*)?$", x=full$Ticket, replacement="\\2")
-full$Ticket.initials <- as.factor(full$Ticket.initials)
-full$Ticket.number <- gsub(pattern = "^((.*) )?(\\d*)?$", x=full$Ticket, replacement="\\3")
-full$Ticket.number <- gsub(pattern = "^LINE$", x=full$Ticket.number, replacement="0")
-full$Ticket.number <- as.integer(full$Ticket.number)
-```
 
 ```{r}
 full[is.na(full$Embarked),]
