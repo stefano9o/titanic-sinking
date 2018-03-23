@@ -169,6 +169,7 @@ full <- full %>% mutate(
 
 #### Embarked feature
 
+In order to impute the Embarked feature we get help from the `Ticket.number` distribution in each `Embarked` group: 
 
 ```{r}
 full[is.na(full$Embarked),]
@@ -188,16 +189,15 @@ full$Embarked <- as.factor(if_else(is.na(full$Embarked),"S",as.character(full$Em
 Since the high number of missing value for the `Cabin` feature we're going to remove it:
 
 ```{r}
-# full$Cabin[is.na(full$Cabin)] <- "U" # Unknown
-# full$Cabin.deck <- gsub(pattern = "^(\\D)(\\d{0,3}).*$", x=full$Cabin, replacement="\\1", ignore.case=TRUE, perl = TRUE)
-# full$Cabin.deck <- as.factor(full$Cabin.deck)
-# full$Cabin.room <- gsub(pattern = "^(\\D)(\\d{0,3}).*$", x=full$Cabin, replacement="\\2", ignore.case=TRUE, perl = TRUE)
 full$Cabin <- NULL
 ```
 
-
 ## Feature engineering
 
+### Family size
+
+The idea behind creating this feature is to understand if the famil
+The answer we want to try to respond is:
 
 ```{r}
 full$Family.count <- full$Parch + full$SibSp
@@ -219,8 +219,7 @@ full$Family.size <- as.factor(full$Family.size)
 ```
 
 
-
-# Exploratory analysis
+## Exploratory analysis
 
 The train is partioned in train and test dataset in order to avoid overfitting and calculate an out-of-sample estimation error in the end:
 
@@ -231,8 +230,7 @@ train$Set <- NULL
 test$Set <- NULL
 ```
 
-
-After doing some feature selection, the following one are removed for the analysis:
+After doing some feature selection, the following features are removed for the model:
 
 ```{r}
 train$SibSp <- NULL
@@ -250,6 +248,8 @@ train$Ticket.number <- NULL
 train$Ticket.initials <- NULL
 train$PassengerId <- NULL
 ```
+
+## Model training
 
 ```{r, message=FALSE}
 library(caret)
@@ -286,6 +286,8 @@ set.seed(5102)
 predicted <- predict(model,df)
 confusionMatrix(predicted,df$Survived)
 ```
+
+## Conclusion
 
 Finaly the model is used to predict the output in the test dataset:
 
