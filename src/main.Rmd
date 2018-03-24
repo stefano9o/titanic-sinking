@@ -3,8 +3,8 @@ title: "My first kernel for the Titanic sinking competition"
 author: "Stefano Galeano"
 date: "19 dicembre 2017"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -20,9 +20,9 @@ This is my first kernel.
 The train/test datasets are loaded in R:
 
 ```{r}
-train <- read.csv('train.csv', header = TRUE, stringsAsFactors = FALSE, na.strings = c(""))
+train <- read.csv('../input/train.csv', header = TRUE, stringsAsFactors = FALSE, na.strings = c(""))
 train$Set = "train"
-test <- read.csv('test.csv', header = TRUE,stringsAsFactors = FALSE, na.strings = c(""))
+test <- read.csv('../input/test.csv', header = TRUE,stringsAsFactors = FALSE, na.strings = c(""))
 test$Set = "test"
 
 # In order to streamline the process, the train and test datasets are binded
