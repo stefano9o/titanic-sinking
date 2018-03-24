@@ -2,9 +2,6 @@
 title: "My first kernel for the Titanic sinking competition"
 author: "Stefano Galeano"
 date: "19 dicembre 2017"
-output:
-  html_document: default
-  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
