@@ -39,6 +39,7 @@ The following features need to be coerced into factor variable:
 full$Survived <- as.factor(full$Survived)
 full$Sex <- as.factor(full$Sex)
 full$Embarked <- as.factor(full$Embarked)
+full$Pclass <- as.factor(full$Pclass)
 ```
 
 ### Missing value analysis:
@@ -179,7 +180,8 @@ full[is.na(full$Embarked),]
 
 g <- ggplot(data = full, aes(Embarked,Ticket.number))
 g <- g + geom_boxplot() + ylim(0, 400000)
-g <- g + theme_bw() + labs(title = "Ticket number distribution for each Embarked", x = "Embarked", y = "Ticket.number") + theme_bw()
+g <- g + theme_bw() + labs(title = "Ticket number distribution for each Embarked", x = "Embarked", y = "Ticket.number")
+# legend
 g
 ```
 
@@ -215,7 +217,7 @@ g <- g + labs(title = "Survival count wrt Family.count", x = "Family.count", y =
 g
 ```
 
- From the histogram it appears that the lonsome travelers and big families have a prevalence of dead respect to medium size families. So, the `Family.size` variable is generated 
+From the histogram it appears that the lonsome travelers and big families have a prevalence of dead respect to medium size families. So, the `Family.size` variable is generated 
 
 ```{r}
 full <- full %>% mutate(Family.size = cut(Family.count, breaks = c(0,1,4,11), labels = c("small","medium","big"), right = FALSE))
