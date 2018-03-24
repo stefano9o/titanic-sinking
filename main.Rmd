@@ -128,7 +128,7 @@ Below it's shown the new histogram of the `Title` feature just created
 ```{r}
 g <- ggplot(full, aes(full$Title))
 g <- g + geom_bar(color="red", fill="blue")
-g <- g + coord_flip() + labs("Passenger titles", "Title", "Count") + theme_bw()
+g <- g + coord_flip() + labs(title = "Passenger titles", x = "Title", y = "Count") + theme_bw()
 g
 ```
 
@@ -153,7 +153,7 @@ By looking at the `Age` distribution for each `Title`:
 ```{r}
 g <- ggplot(data = full, aes(Age))
 g <- g + geom_bar(binwidth = 1)
-g <- g + labs("Missing values ranking [%]", "Feature", "Missing Values [%]") + theme_bw()
+g <- g + labs(title = "Age distribution for each Title", x = "Age", y = "Count") + theme_bw()
 g + facet_grid(Title~., scales = "free")
 ```
 
@@ -179,7 +179,7 @@ full[is.na(full$Embarked),]
 
 g <- ggplot(data = full, aes(Embarked,Ticket.number))
 g <- g + geom_boxplot() + ylim(0, 400000)
-g <- g + theme_bw()
+g <- g + theme_bw() + labs(title = "Ticket number distribution for each Embarked", x = "Embarked", y = "Ticket.number") + theme_bw()
 g
 ```
 
@@ -211,6 +211,7 @@ full$Family.count <- full$Parch + full$SibSp
 g <- ggplot(data = full[!is.na(full$Survived),], aes(Family.count, fill = Survived))
 g <- g + geom_bar(position = "dodge")
 g <- g + scale_x_continuous(breaks =  0:10)
+g <- g + labs(title = "Survival count wrt Family.count", x = "Family.count", y = "count")
 g
 ```
 
