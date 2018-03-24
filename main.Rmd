@@ -55,7 +55,8 @@ missingValue = data.frame(missingValuePercentage = missingValue, feature = names
 g <- ggplot(data = filter(missingValue,feature!="Survived" & missingValuePercentage != 0), 
             aes(reorder(feature, missingValuePercentage),missingValuePercentage))
 g <- g + geom_bar(stat = "identity", fill="red")
-g <- g + coord_flip() + labs("Missing values ranking [%]", "Feature", "Missing Values [%]") + theme_bw()
+g <- g + labs(title = "Missing values ranking [%]", x = "Feature", y = "Missing Values [%]")
+g <- g + coord_flip() + theme_bw()
 g
 ```
 
@@ -85,22 +86,22 @@ Since we want to avoid overfitting, the less frequent titles are pooled in the m
 full <- full %>% mutate(
         Title = case_when(
                 # Young boy less then 18 years old
-                Name.title == "Master."                         ~ "Master",
+                Name.title == "Master."                 ~ "Master",
 
                 # Girl or unmarried women
                 Name.title == "Miss." | 
-                Name.title == "Mlle."                           ~ "Miss",
+                Name.title == "Mlle."                   ~ "Miss",
                 
                 # Women married
                 Name.title == "Mrs."  | 
                 Name.title == "Mme."  |
-                Name.title == "Dona."                           ~ "Mrs",
+                Name.title == "Dona."                   ~ "Mrs",
 
                 # Women with unspecified status
                 Name.title == "Ms."           |
                 Name.title == "Lady."         |
                 Name.title == "the Countess." |
-                Name.title == "Dr." & Sex == "female"           ~ "Mrs", # In this group because there are too few observation
+                Name.title == "Dr." & Sex == "female"   ~ "Mrs", # In this group because there are too few observation
                 
                 # Men
                 Name.title == "Mr."       |
@@ -108,7 +109,7 @@ full <- full %>% mutate(
                 Name.title == "Rev."      |
                 Name.title == "Don."      |
                 Name.title == "Jonkheer." |            
-                Name.title == "Dr." & Sex == "male"             ~ "Mr",
+                Name.title == "Dr." & Sex == "male"     ~ "Mr",
                 
                 # Crew
                 Name.title == "Capt." |
