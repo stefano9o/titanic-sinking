@@ -235,20 +235,7 @@ test$Set <- NULL
 After doing some feature selection, the following features are removed for the model:
 
 ```{r}
-train$SibSp <- NULL
-train$Parch <- NULL
-train$Family.count <- NULL
-train$Name <- NULL
-train$Name.surname <- NULL
-train$Name.title <- NULL
-train$Cabin <- NULL
-train$Cabin.room <- NULL
-train$Ticket <- NULL
-train$Fare <- NULL
-train$Age.mdn <- NULL
-train$Ticket.number <- NULL
-train$Ticket.initials <- NULL
-train$PassengerId <- NULL
+train <- train %>% select(Survived,Age,Sex,Pclass,Title,Family.size) 
 ```
 
 ## Model training
@@ -261,8 +248,7 @@ inTrain <- createDataPartition(train$Survived,p=.75,list = FALSE)
 
 train.train <- train[inTrain,]
 train.test <- train[-inTrain,]
-str(train.train$Title)
-str(train.test$Title)
+
 df <- train.train
 ```
 
