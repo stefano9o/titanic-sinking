@@ -1,18 +1,79 @@
 ---
 title: "My first kernel for the Titanic sinking competition"
 author: "Stefano Galeano"
-date: "19 dicembre 2017"
+date: "4 April 2018"
+output: 
+        html_document:
+        toc: TRUE
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Introduction
+# Kaggle Introduction
 
-This is my first kernel.
+The sinking of the RMS Titanic is one of the most infamous shipwrecks in history.  On April 15, 1912, during her maiden voyage, the Titanic sank after colliding with an iceberg, killing 1502 out of 2224 passengers and crew. This sensational tragedy shocked the international community and led to better safety regulations for ships.
 
-## Getting data
+One of the reasons that the shipwreck led to such loss of life was that there were not enough lifeboats for the passengers and crew. Although there was some element of luck involved in surviving the sinking, some groups of people were more likely to survive than others, such as women, children, and the upper-class.
+
+In this challenge, we ask you to complete the analysis of what sorts of people were likely to survive. In particular, we ask you to apply the tools of machine learning to predict which passengers survived the tragedy.
+
+
+## Data Dictionary
+
+Variable | Definition                               | Key
+---------|------------------------------------------|---------------------------
+survival | Survival                                 | 0 = No, 1 = Yes
+pclass	 | Ticket class                             | 1 = 1st, 2 = 2nd, 3 = 3rd
+sex      | Sex 	                                    |
+Age      | Age in years                             | 
+sibsp	 | # of siblings/spouses aboard the Titanic |
+ticket   | Ticket number                            |
+fare     | Passenger fare                           |
+cabin	 | Cabin number                             |
+embarked | Port of Embarkation                      | C = Cherbourg, Q = Queenstown, S = Southampton
+
+
+### Variable Notes
+
+**pclass**: A proxy for socio-economic status (SES)
+1st = Upper
+2nd = Middle
+3rd = Lower
+
+**age**: Age is fractional if less than 1. If the age is estimated, is it in the form of xx.5
+
+**sibsp**: The dataset defines family relations in this way...
+Sibling = brother, sister, stepbrother, stepsister
+Spouse = husband, wife (mistresses and fiancés were ignored)
+
+**parch**: The dataset defines family relations in this way...
+Parent = mother, father
+Child = daughter, son, stepdaughter, stepson
+Some children travelled only with a nanny, therefore parch=0 for them.
+
+# Executive summary
+
+This is my first kernel and bellow the main points that characterize my work:
+
++ use less predictors as possible in order to promote interpretability
++ compare different ML algorihtm and combine them in order to increase power prediction
+
+# Getting data
+
+## Library import
+
+```{r, message=FALSE}
+library(ggplot2) # Visualization
+library(dplyr) # Data manipulation
+library(corrplot) # Correlattion plot
+library(pROC) # Roc curve
+library(caret)
+library(party)
+```
+
+## Importing and cleaning Data
 
 The train/test datasets are loaded in R:
 
@@ -27,158 +88,197 @@ test$Survived <- NA # this is needed in order make possible the binding
 full <- rbind(train,test)
 ```
 
-## Cleaning Data
-
 The following features need to be coerced into factor variable:
 
 ```{r}
 # Feature coercing
-full$Survived <- as.factor(full$Survived)
+full$Survived <- as.factor(full$Survived); origLevels <- levels(full$Survived); levels(full$Survived) <- c("dead","survived")
 full$Sex <- as.factor(full$Sex)
 full$Embarked <- as.factor(full$Embarked)
 full$Pclass <- as.factor(full$Pclass)
 ```
 
-### Missing value analysis:
+## Survival distribution
+
+```{r}
+g <- ggplot(filter(full,!is.na(Survived)),aes(Survived))
+g <- g + geom_bar(colour = "black", aes(fill=Sex, Pclass),position="dodge")
+g <- g + labs(title = "Survival distribution", x = "Pclass", y = "# survied") + theme_bw()
+g
+```
+
+## Missing value analysis:
 
 Let's first have a look at the percentage of missing value for each feature:
 
 ```{r}
-library(dplyr)
-library(ggplot2)
-
 missingValue <- sapply(full, function(feature){
         sum(is.na(feature))/length(feature)
-}) 
-missingValue = data.frame(missingValuePercentage = missingValue, feature = names(missingValue))
+})
+missingValue <- data.frame(feature = names(missingValue), percentage = missingValue) %>% filter(percentage != 0)
 
-g <- ggplot(data = filter(missingValue,feature!="Survived" & missingValuePercentage != 0), 
-            aes(reorder(feature, missingValuePercentage),missingValuePercentage))
-g <- g + geom_bar(stat = "identity", fill="red")
-g <- g + labs(title = "Missing values ranking [%]", x = "Feature", y = "Missing Values [%]")
+g <- ggplot(missingValue,
+            aes(reorder(feature, percentage),percentage))
+g <- g + geom_bar(stat = "identity", fill="dark green", color="black")
+g <- g + labs(title = "Missing values Overview [%]", x = "Feature", y = "Missing Values [%]")
 g <- g + coord_flip() + theme_bw()
 g
 ```
 
-#### Extracting the title from the the Name feature 
 
-From the `Name` feature is possible to extract the title. The idea is to use the feature in order to:
-+ better understand the family status (married or maiden)
-+ is part of the crew
-+ help us to handle the NA for the `Age` feature
+## Cleaning data
 
-Each `Name` is of the form `String, Title. String`, and using regex we can extract the Title part:
+### Name: extracting Title and Family Name
 
 ```{r}
 head(full$Name)
+```
+
+Each `Name` is of the form `String, Title. String`, where the first one is the family name. 
+
+The idea is to use the feature in order to:
++ understand the family status (married or maiden)
++ wheater or not is part of the crew
++ handle the NA for the `Age`
+
+Regular expressions have been used in order to exract the `Name.family` and `Name.title`
+
+```{r}
+full$Name.family <- gsub(pattern = "([\\w|\\-| |']*), ([\\w| ]*\\.) (.*)", x=full$Name, replacement="\\1", ignore.case=TRUE, perl = TRUE)
 full$Name.title <- gsub(pattern = "([\\w|\\-| |']*), ([\\w| ]*\\.) (.*)", x=full$Name, replacement="\\2", ignore.case=TRUE, perl = TRUE)
 ```
 
-Let's have a look at the titles and their frequency:
+```{r}
+Name.family <- full %>% group_by(Name.family) %>% summarise(Name.family.count = n())
+full <- inner_join(full,Name.family, by = "Name.family")
+```
 
 ```{r}
 table(full$Name.title)
 ```
 
-Since we want to avoid overfitting, the less frequent titles are pooled in the more common ones:
+The less frequent titles are pooled in the more common ones in order to avoid overfitting:
 
 ```{r}
 full <- full %>% mutate(
-        Title = case_when(
+        Title = as.factor(case_when(
                 # Young boy less then 18 years old
-                Name.title == "Master."                 ~ "Master",
-
+                Name.title == "Master."                         ~ "Master",
+                
                 # Girl or unmarried women
                 Name.title == "Miss." | 
-                Name.title == "Mlle."                   ~ "Miss",
+                        Name.title == "Mlle."                   ~ "Miss",
                 
                 # Women married
                 Name.title == "Mrs."  | 
-                Name.title == "Mme."  |
-                Name.title == "Dona."                   ~ "Mrs",
-
+                        Name.title == "Mme."  |
+                        Name.title == "Dona."                   ~ "Mrs",
+                
                 # Women with unspecified status
                 Name.title == "Ms."           |
-                Name.title == "Lady."         |
-                Name.title == "the Countess." |
-                Name.title == "Dr." & Sex == "female"   ~ "Mrs", # In this group because there are too few observation
+                        Name.title == "Lady."         |
+                        Name.title == "the Countess." |
+                        Name.title == "Dr." & Sex == "female"   ~ "Mrs", # In this group because there are too few observation
                 
                 # Men
                 Name.title == "Mr."       |
-                Name.title == "Sir."      |
-                Name.title == "Rev."      |
-                Name.title == "Don."      |
-                Name.title == "Jonkheer." |            
-                Name.title == "Dr." & Sex == "male"     ~ "Mr",
+                        Name.title == "Sir."      |
+                        Name.title == "Rev."      |
+                        Name.title == "Don."      |
+                        Name.title == "Jonkheer." |            
+                        Name.title == "Dr." & Sex == "male"     ~ "Mr",
                 
                 # Crew
                 Name.title == "Capt." |
-                Name.title == "Col."  |
-                Name.title == "Major."                          ~ "Officer"
-                )
+                        Name.title == "Col."  |
+                        Name.title == "Major."                  ~ "Mr" # In this group because it wasn't significative in the final model
+        ))
 )
-
-
-full$Title <- as.factor(full$Title)
 ```
 
-Below it's shown the new histogram of the `Title` feature just created
+Below it's shown the new histogram of the `Title` feature just created:
+
 ```{r}
-g <- ggplot(full, aes(full$Title))
-g <- g + geom_bar(color="red", fill="blue")
+g <- ggplot(full, aes(Title))
+g <- g + geom_bar(color="black", aes(fill=Title))
 g <- g + coord_flip() + labs(title = "Passenger titles", x = "Title", y = "Count") + theme_bw()
 g
 ```
 
-# Extracting the ticket number from the Ticked feature
+### Ticket: Ticket number
 
-Using the same approch used for the Title (checking the form and using regex), the `Ticket.number` is extracted: 
+Using the same approch used for the Title (checking the structure of the entries and using regex), the `Ticket.number` is extracted: 
 
 ```{r}
-# full$Ticket.initials <- gsub(pattern = "^((.*) )?(\\d*)?$", x=full$Ticket, replacement="\\2")
-# full$Ticket.initials <- as.factor(full$Ticket.initials)
 full$Ticket.number <- gsub(pattern = "^((.*) )?(\\d*)?$", x=full$Ticket, replacement="\\3")
+# Since we want to treat them as number the tickets which start with LINE are replaced with the 0
 full$Ticket.number <- gsub(pattern = "^LINE$", x=full$Ticket.number, replacement="0")
 full$Ticket.number <- as.integer(full$Ticket.number)
 ```
 
-### Missing Value imputation
+## Cabin: extracting the deck
 
-#### Age feature
+```{r}
+full <- full %>% mutate(Cabin.Deck = as.factor(case_when(
+        grepl("^A",Cabin) ~ "A",
+        grepl("^B",Cabin) ~ "B",
+        grepl("^C",Cabin) ~ "C",
+        grepl("^D",Cabin) ~ "D",
+        grepl("^E",Cabin) ~ "E",
+        grepl("^F",Cabin) ~ "F",
+        grepl("^G",Cabin) ~ "G",
+        grepl("^T",Cabin) ~ "T",
+        TRUE ~ "NONE"
+)))
+```
+
+```{r}
+g <- ggplot(filter(full,Cabin.Deck != "NONE" & Set=="train"), aes(Cabin.Deck))
+g <- g + geom_bar(color="black", aes(fill=Survived, alpha=Pclass), position = "dodge")
+g <- g + labs(title = "Cabin Deck distribution", x = "Cabin Deck", y = "Count") + theme_bw()
+g
+```
+
+## Missing Value imputation
+
+### Age
+
+```{r}
+df <- full %>% select(Age,Title) %>% filter(!is.na(Age))
+
+fit <- ctree(Age~., data=df)
+plot(fit, main="Age decision tree for imputation")
+
+full$Age.ctree <- as.vector(predict(fit,full))
+full <- full %>% mutate(Age.imputed=ifelse(is.na(Age),Age.ctree,Age))
+```
 
 By looking at the `Age` distribution for each `Title`:
 
 ```{r}
-g <- ggplot(data = full, aes(Age))
-g <- g + geom_bar(binwidth = 1)
-g <- g + labs(title = "Age distribution for each Title", x = "Age", y = "Count") + theme_bw()
+g <- ggplot(data = filter(full,!is.na(Age)), aes(Age))
+g <- g + geom_histogram(binwidth = 1, fill="blue", color="black")
+g <- g + labs(title = "Age distribution per Title", x = "Age", y = "Count") + theme_bw()
 g + facet_grid(Title~., scales = "free")
 ```
 
 it seems reasonable to use the median `Age` in the `Title` group of appartenency.
 
 ```{r}
-full <- full %>% group_by(Title) %>% mutate(Age.mdn = median(Age,na.rm = TRUE))
-
-full <- full %>% mutate(
-        Age = if_else(is.na(Age),
-                      Age.mdn,
-                      Age
-                      )
-)
+full <- full %>% group_by(Title) %>% mutate(Age.median = median(Age,na.rm = TRUE)) %>% ungroup(Title)
+full <- full %>% mutate(Age = if_else(is.na(Age),Age.median,Age))
 ```
 
-#### Embarked feature
+### Embarked
 
 In order to impute the Embarked feature we get help from the `Ticket.number` distribution in each `Embarked` group: 
 
 ```{r}
 full[is.na(full$Embarked),]
 
-g <- ggplot(data = full, aes(Embarked,Ticket.number))
-g <- g + geom_boxplot() + ylim(0, 400000)
+g <- ggplot(data = filter(full,!is.na(Embarked)), aes(Embarked,Ticket.number))
+g <- g + geom_boxplot(aes(fill = Embarked), alpha = 0.5) + ylim(0, 400000)
 g <- g + theme_bw() + labs(title = "Ticket number distribution for each Embarked", x = "Embarked", y = "Ticket.number")
-# legend
 g
 ```
 
@@ -186,44 +286,127 @@ g
 full$Embarked <- as.factor(if_else(is.na(full$Embarked),"S",as.character(full$Embarked)))
 ```
 
-#### Cabin feature
+### Cabin
 
-Since the high number of missing value for the `Cabin` feature we're going to remove it:
+Since the high number of missing values for the `Cabin` feature we're going to remove it:
 
 ```{r}
+full <- full %>% mutate(
+        hasCabin = if_else(is.na(Cabin), FALSE, TRUE)
+)
 full$Cabin <- NULL
 ```
 
-## Feature engineering
-
-### Family size
-
-The question that motivates the creation of the Family size feature is:
-
-+ Does the big families have more chance to survive than the lonesome travelers?
-
-The `Family.count` feature is generated by summing up the `sibsp` (# of siblings/spouses aboard) and the `parch` (# of parent/children aboard) features:
+### Fare
 
 ```{r}
-full$Family.count <- full$Parch + full$SibSp
+full <- full %>% mutate(Fare=ifelse(is.na(Fare),mean(Fare,na.rm = TRUE),Fare))
+```
 
-g <- ggplot(data = full[!is.na(full$Survived),], aes(Family.count, fill = Survived))
-g <- g + geom_bar(position = "dodge")
-g <- g + scale_x_continuous(breaks =  0:10)
-g <- g + labs(title = "Survival count wrt Family.count", x = "Family.count", y = "count")
+## Fix
+
+### ParCh and SibSp
+
+https://www.kaggle.com/c/titanic/discussion/39787
+
+```{r}
+full$SibSp[full$PassengerId==280] <- 0
+full$Parch[full$PassengerId==280] <- 2
+full$SibSp[full$PassengerId==1284] <- 1
+full$Parch[full$PassengerId==1284] <- 1
+```
+
+```{r}
+full %>% select(PassengerId,Age,Parch,SibSp,Sex) %>% filter(Parch > 0) %>% arrange(Age)
+```
+
+
+# Feature engineering
+
+## Family and group size: solo or teamwork?
+
++ Does the big families/groups have more chance to survive than the lonesome travelers?
+
+The `Relatives` feature is generated by summing up the `sibsp` (# of siblings/spouses aboard) and the `parch` (# of parent/children aboard):
+
+```{r}
+full$Relatives <- full$Parch + full$SibSp
+```
+
+```{r}
+g <- ggplot(data = full, aes(Relatives, Name.family.count))
+g <- g + geom_count(fill = "brown", alpha=0.5)
+g <- g + geom_smooth(method = "lm", color="dark blue")
+g <- g + theme_bw() + labs(title = "Correlation between Relatives (number of relatives aboard)\n and Name.family.count (Passanger with the same familyname)", x = "Relatives [#]", y = "Name.family.count [#]")
 g
 ```
 
-From the histogram it appears that the lonsome travelers and big families have a prevalence of dead respect to medium size families. So, the `Family.size` variable is generated 
+By counting the `Ticket.number`, we can create a new feature.
+
+This feature can give us an estimation of the group size for each ticket. In addition to include some relatives already took into account by the `Relatives` just created, it will also include some friends who were traveling togheter:
 
 ```{r}
-full <- full %>% mutate(Family.size = cut(Family.count, breaks = c(0,1,4,11), labels = c("small","medium","big"), right = FALSE))
+ticket <- full %>% group_by(Ticket.number) %>% summarise(Ticket.number.count=n()) %>% mutate(Ticket.number.count=as.integer(Ticket.number.count)) %>% ungroup()
+full <- inner_join(full,ticket,by = "Ticket.number")
 ```
 
+```{r}
+g <- ggplot(data = full, aes(Relatives, Ticket.number.count))
+g <- g + geom_count(fill = "brown", alpha=0.5)
+g <- g + geom_smooth(method = "lm", color="dark blue")
+g <- g + theme_bw() + labs(title = "Correlation between Relatives (number of relatives aboard) \nand Ticket.number.count (Passanger with the same ticket number)", x = "Relatives [#]", y = "Ticket.number.count [#]")
+g
+```
 
-## Exploratory analysis
+In order to inlude all possible relations among the passengers, a `Group.size` feature is created taking the max value between `Relatives` and `Ticket.number.count`:
 
-The train is partioned in train and test dataset in order to avoid overfitting and calculate an out-of-sample estimation error in the end:
+```{r}
+full <- full %>% mutate(Group.size = ifelse(Ticket.number.count < Relatives,Relatives,Ticket.number.count))
+```
+
+### Number of survivors in the group
+
+```{r}
+Ticket.survived <- full %>% filter(Survived=="survived") %>% group_by(Ticket.number) %>% summarise(Group.survived=n()-1) %>% ungroup()
+full <- left_join(full,Ticket.survived,by="Ticket.number") %>% mutate(Group.survived=ifelse(is.na(Group.survived),0,Group.survived))
+```
+
+### Number of survivors with the same family name
+
+```{r}
+Family.survived <- full %>% filter(Survived=="survived") %>% group_by(Name.family) %>% summarise(Family.survived=n()-1) %>% ungroup()
+full <- left_join(full,Family.survived,by="Name.family") %>% mutate(Family.survived=ifelse(is.na(Family.survived),0,Family.survived))
+```
+
+### Number of survivors
+
+```{r}
+full <- full %>% mutate(Survivors = if_else(Family.survived > Group.survived,Family.survived,Group.survived))
+```
+
+### Survivor percentage in group
+
+```{r}
+full <- full %>% mutate(Survivors.percentage = Survivors/Group.size)
+```
+
+### Any survivors
+
+```{r}
+full <- full %>% mutate(AnySurvivor = if_else(Survivors==0,FALSE,TRUE))
+```
+
+## Fare per person
+
+By Dividng the `Fare` per the `Group.size` just created, we can calculate the Fare per person
+
+```{r}
+full <- full %>% mutate(Fare.per.Person = Fare / Group.size)
+```
+
+# Exploratory analysis
+
+The full dataset is splitted back in train and test:
 
 ```{r}
 train <- full[full$Set == "train",]
@@ -232,59 +415,294 @@ train$Set <- NULL
 test$Set <- NULL
 ```
 
-After doing some feature selection, the following features are removed for the model:
-
 ```{r}
-train <- train %>% select(Survived,Age,Sex,Pclass,Title,Family.size) 
+g <- ggplot(data = train, aes(Group.size))
+g <- g + geom_bar(position="dodge", aes(fill=Survived))
+g <- g + scale_x_continuous(breaks=1:11)
+g <- g + labs(title = "Ticket group size distribution", x = "Ticket number size", y = "Count") + theme_bw()
+g
 ```
 
-## Model training
+## Group size bins
+
+It seems that solo passengers and big groups have less chances to survive. The couples instead, seems to have 50% chance. In order to avoid overfitting the `Ticket.number.count` number is cut in 4 levels:
+
+```{r}
+full <- full %>% mutate(Group.dim = cut(Group.size, breaks = c(1,2,5,12), labels = c("solo","medium","big"), right = FALSE))
+```
+
+```{r}
+g <- ggplot(train,aes(hasCabin,Fare.per.Person))
+g <- g + geom_violin(aes(fill=Survived),alpha=.5,kernel = "gaussian")
+g <- g + coord_cartesian(ylim = c(0, 80))
+# g <- g + annotate(geom = "text", x = 10, y = .28, label = max(..count..))
+g
+```
+
+It seems like `Fare.per.Person` below 18 have less chance to survive respect to higher values.
+
+```{r}
+full <- full %>% mutate(Fare.group=as.factor(ifelse(Fare.per.Person>18,"high","low")))
+```
+
+
+```{r}
+full %>% filter(between(Fare.per.Person,20,35),Survived=="dead",hasCabin==TRUE)
+full %>% filter(hasCabin==TRUE)
+```
+
+```{r}
+full <- full %>% mutate(is3dClass = ifelse(Pclass=="3",TRUE,FALSE))
+```
+
+## Age bin
+
+```{r}
+full <- full %>% mutate(Age.imputed.bin = cut(Age.imputed,breaks = c(0,10,45,99)))
+full <- full %>% mutate(Age.bin = cut(Age,breaks = c(0,10,45,99)))
+```
+
+```{r}
+train <- full[full$Set == "train",]
+test <- full[full$Set == "test",]
+train$Set <- NULL
+test$Set <- NULL
+```
+
+## Feature selection
+
+The following features will be included in the model:
+
+```{r}
+# Pclass Title AnySurvivor Age Age.bin Sex IsMale is3dClass Survivors.percentage Fare.group
+train <- train %>% select(AnySurvivor, Survived, Age.bin, Sex, Pclass, Fare.group)
+```
+
+# Modeling
+
+## Splitting training dataset for cross validation
+
+The train dataset is then partioned in train and test dataset in order to avoid overfitting and can calculate an out-of-sample estimation error in the end:
 
 ```{r, message=FALSE}
-library(caret)
-
 set.seed(4974)
-inTrain <- createDataPartition(train$Survived,p=.75,list = FALSE)
+inTrain <- createDataPartition(train$Survived,p=0.75,list = FALSE)
 
 train.train <- train[inTrain,]
 train.test <- train[-inTrain,]
-
-df <- train.train
 ```
 
-The Model is then trained using *k-fold* cross validation in order to avoid overfitting:
+## Training: base models
 
 ```{r}
-set.seed(72034)
-
-ctrl <- trainControl(method = "cv") # cross validation using 10-fold method
-model <- train(Survived~.,data = df,method="rf", trControl = ctrl)
-predicted <- predict(model)
-
-confusionMatrix(predicted,df$Survived)
+# INPUT
+# formula
+# modelTag: tag
+# trainDf: dataframe used for training
+# ctrl: a training control function for caret::train
+# ...: any extra parameter needed for caret::train
+# OUTPUT
+# trainList: list of trained models
+train.list <- function(formula,df,modelTags, ...){
+        trainList <- lapply(modelTags, 
+                function(modelTag){
+                        train(form=as.formula(formula),data=df,method=modelTag, ...)
+                })
+        names(trainList) <- modelTags
+        trainList
+}
 ```
 
-The model is used to predict the outcome in the test dataset in order to estimate the out of sample error:
+```{r}
+# INPUT
+# formula
+# models: list of caret models
+# newDF: dataframe for prediction
+# ...: any extra parameter needed for caret::predict
+# OUTPUT
+# dataframe of predictions
+predict.list <- function(models, newDF, ...){
+        as.data.frame(lapply(models, function(model){
+                predict(model,newDF,...)
+        }))
+}
+```
+
+```{r}
+# INPUT
+# preditctions: a dataframe in whih each column is a whole set of prediction
+# outocme: true outomce
+# ...: any extra parameter needed for caret::confusionMatrix
+# OUTPUT
+# list of confusion Matrixes
+confusionMatrix.list <- function(predictions, outcome, ...){
+        cmList <- lapply(predictions, function(prediction){
+                confusionMatrix(prediction,outcome,...)
+        })
+        names(cmList) <- names(predictions)
+        cmList
+}
+```
+
+```{r}
+df <- train.train
+modelTags <- c("rf","svmRadial","pcaNNet","kknn","bayesglm","xgbLinear")
+ctrl <- trainControl(method = "cv", number = 20) # cross validation using 10-fold method
+prePrcocess <- c("scale","center")
+
+set.seed(381028)
+
+models.train.train <- train.list(Survived~., df, modelTags, trControl=ctrl, preProc=prePrcocess, trace = FALSE)
+```
+
+```{r, warning=FALSE}
+df = train.train
+
+prediction.train.train <- predict.list(models.train.train,df)
+```
+
+## Model Comparison
+
+```{r}
+M <- cor(sapply(prediction.train.train,as.numeric))
+corrplot.mixed(M)
+```
+
+### Ensambling 1: stacking
+
+```{r}
+# firstLayer <- c("kknn","bayesglm","svmRadial","xgbLinear")
+firstLayer <- c("kknn","bayesglm")
+df.prediction <- prediction.train.train %>% select(firstLayer) %>% mutate(Survived = train.train$Survived)
+
+model.rfSecondLayer <- train(Survived~.,data=df.prediction, method="rf", trControl = ctrl)
+```
+
+### Ensambling 2: majority vote
+
+```{r}
+mode <- function(x){
+        names(which.max(
+                table(x) # frequency table
+        ) # column with max value
+        ) # names for the max column
+}
+```
+
+```{r}
+## Ensamble method that uses a majority vote 
+## x data.frame in input
+majorityVote <- function (x){
+        as.factor(
+                apply(x,1,mode)
+        )
+}
+```
+
+```{r}
+modelTagsMaj <- c("svmRadial", "bayesglm", "kknn")
+
+df.prediction <- prediction.train.train %>% select(modelTagsMaj)
+prediction.train.train <- prediction.train.train %>%
+        mutate(majVote=majorityVote(df.prediction))
+```
+
+## Model validation
+
+The trained models are used to predict the outcome in the test dataset in order to estimate the out of sample error and avoid overfitting:
+
+### Base models prediction
 
 ```{r, warning=FALSE}
 df = train.test
 
 set.seed(5102)
 
-predicted <- predict(model,df)
-confusionMatrix(predicted,df$Survived)
+prediction.train.test <- predict.list(models.train.train,df)
 ```
 
-## Conclusion
+## Stacked model prediction
 
-Finaly the model is used to predict the output in the test dataset:
+```{r}
+df <- prediction.train.test %>% select(firstLayer) %>% mutate(Survived = df$Survived)
+prediction.train.test$rfSecondLayer <- predict(model.rfSecondLayer,df)
+```
+
+## Majority vote prediction
+
+```{r}
+df.prediction <- prediction.train.test %>% select(modelTagsMaj)
+prediction.train.test <- prediction.train.test %>%
+        mutate(majVote=majorityVote(df.prediction))
+```
+
+### Results
+
+```{r}
+df <- train.test
+
+confusionMatrixes.test <- confusionMatrix.list(prediction.train.test,df$Survived)
+performance <- as.data.frame(sapply(confusionMatrixes.test, function(cm){
+        c(cm$byClass,cm$overall)
+}))
+
+model.rfSecondLayer$results
+performance[c("Accuracy","AccuracyLower","AccuracyUpper","Sensitivity","Specificity","Balanced Accuracy"),]
+```
+
+## Variable importance
+
+```{r}
+varImp(models.train.train$rf,scale = FALSE)
+```
+
+```{r}
+varImp(model.rfSecondLayer,scale = FALSE)
+```
+
+## Training using the whole train set
+
+# ```{r}
+# df <- train
+# 
+# set.seed(47382)
+# 
+# # Train
+# models.train <- train.list(Survived~., df, modelTags, trControl=ctrl, trace = FALSE)
+# 
+# # Predict
+# prediction.train <- predict.list(models.train,df)
+# 
+# # Stacking
+# df.prediction <- prediction.train %>% select(firstLayer) %>% mutate(Survived = df$Survived)
+# model.rfSecondLayer <- train(Survived~.,data=df.prediction, method="rf", trControl = ctrl)
+# prediction.train$rfSecondLayer <- predict(model.rfSecondLayer,df.prediction)
+# 
+# # Majority vote
+# df.prediction <- prediction.train %>% select(modelTagsMaj)
+# prediction.train <- prediction.train %>%
+#         mutate(majVote=majorityVote(df.prediction))
+# ```
+
+# Predict with the test dataset
+
+```{r}
+df = test
+
+set.seed(5102)
+
+prediction.test <- predict.list(models.train.train,df)
+
+df.prediction <- prediction.test %>% select(firstLayer)
+prediction.test$rfSecondLayer <- predict(model.rfSecondLayer,df.prediction)
+
+df.prediction <- prediction.test %>% select(modelTagsMaj)
+prediction.test <- prediction.test %>%
+        mutate(majVote=majorityVote(df.prediction))
+```
 
 ```{r,warning=FALSE}
 df = test
-        
-set.seed(5102)
-
-predicted <- predict(model,df)
-write.csv(data.frame(PassengerId = test$PassengerId,Survived = predicted),"solution.csv",row.names = FALSE)
+prediction.test$final <- as.factor(prediction.test$rfSecondLayer); levels(prediction.test$final) <- origLevels
+write.csv(data.frame(PassengerId = df$PassengerId,Survived = prediction.test$final),"solution.csv",row.names = FALSE)
 ```
-
