@@ -4,11 +4,14 @@ author: "Stefano Galeano"
 date: "4 April 2018"
 output: 
         html_document:
-        toc: TRUE
+                toc: TRUE
+                toc_float: TRUE
+                code_folding: hide
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(cache = TRUE)
 ```
 
 # Kaggle Introduction
