@@ -3,10 +3,10 @@ title: "My first kernel for the Titanic sinking competition"
 author: "Stefano Galeano"
 date: "4 April 2018"
 output: 
-        html_document:
-                toc: TRUE
-                toc_float: TRUE
-                code_folding: hide
+    html_document:
+      code_folding: hide
+      toc: yes
+      toc_float: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -121,7 +121,7 @@ Let's first have a look at the percentage of missing value for each feature:
 
 ```{r}
 missingValue <- sapply(full, function(feature){
-        sum(is.na(feature))/length(feature)
+    sum(is.na(feature))/length(feature)
 })
 missingValue <- data.frame(feature = names(missingValue), percentage = missingValue) %>% filter(percentage != 0)
 
@@ -168,46 +168,46 @@ full <- inner_join(full,Name.family, by = "Name.family")
 
 ```{r}
 knitr::kable(table(full$Name.title),"html") %>%
-        kable_styling() %>%
-        scroll_box(height = "200px")
+    kable_styling() %>%
+    scroll_box(height = "200px")
 ```
 
 As we can see from the last output, many titles have only few occurence. The less frequent titles are pooled in the more common ones:
 
 ```{r}
 full <- full %>% mutate(
-        Title = as.factor(case_when(
-                # Young boy less then 18 years old
-                Name.title == "Master."                         ~ "Master",
-                
-                # Girl or unmarried women
-                Name.title == "Miss." | 
-                        Name.title == "Mlle."                   ~ "Miss",
-                
-                # Women married
-                Name.title == "Mrs."  | 
-                        Name.title == "Mme."  |
-                        Name.title == "Dona."                   ~ "Mrs",
-                
-                # Women with unspecified status
-                Name.title == "Ms."           |
-                        Name.title == "Lady."         |
-                        Name.title == "the Countess." |
-                        Name.title == "Dr." & Sex == "female"   ~ "Mrs", # In this group because there are too few observation
-                
-                # Men
-                Name.title == "Mr."       |
-                        Name.title == "Sir."      |
-                        Name.title == "Rev."      |
-                        Name.title == "Don."      |
-                        Name.title == "Jonkheer." |            
-                        Name.title == "Dr." & Sex == "male"     ~ "Mr",
-                
-                # Crew
-                Name.title == "Capt." |
-                        Name.title == "Col."  |
-                        Name.title == "Major."                  ~ "Mr" # In this group because it wasn't significative in the final model
-        ))
+    Title = as.factor(case_when(
+        # Young boy less then 18 years old
+        Name.title == "Master."                         ~ "Master",
+        
+        # Girl or unmarried women
+        Name.title == "Miss." | 
+            Name.title == "Mlle."                   ~ "Miss",
+        
+        # Women married
+        Name.title == "Mrs."  | 
+            Name.title == "Mme."  |
+            Name.title == "Dona."                   ~ "Mrs",
+        
+        # Women with unspecified status
+        Name.title == "Ms."           |
+            Name.title == "Lady."         |
+            Name.title == "the Countess." |
+            Name.title == "Dr." & Sex == "female"   ~ "Mrs", # In this group because there are too few observation
+        
+        # Men
+        Name.title == "Mr."       |
+            Name.title == "Sir."      |
+            Name.title == "Rev."      |
+            Name.title == "Don."      |
+            Name.title == "Jonkheer." |            
+            Name.title == "Dr." & Sex == "male"     ~ "Mr",
+        
+        # Crew
+        Name.title == "Capt." |
+            Name.title == "Col."  |
+            Name.title == "Major."                  ~ "Mr" # In this group because it wasn't significative in the final model
+    ))
 )
 ```
 
@@ -235,15 +235,15 @@ full$Ticket.number <- as.integer(full$Ticket.number)
 
 ```{r}
 full <- full %>% mutate(Cabin.Deck = as.factor(case_when(
-        grepl("^A",Cabin) ~ "A",
-        grepl("^B",Cabin) ~ "B",
-        grepl("^C",Cabin) ~ "C",
-        grepl("^D",Cabin) ~ "D",
-        grepl("^E",Cabin) ~ "E",
-        grepl("^F",Cabin) ~ "F",
-        grepl("^G",Cabin) ~ "G",
-        grepl("^T",Cabin) ~ "T",
-        TRUE ~ "NONE"
+    grepl("^A",Cabin) ~ "A",
+    grepl("^B",Cabin) ~ "B",
+    grepl("^C",Cabin) ~ "C",
+    grepl("^D",Cabin) ~ "D",
+    grepl("^E",Cabin) ~ "E",
+    grepl("^F",Cabin) ~ "F",
+    grepl("^G",Cabin) ~ "G",
+    grepl("^T",Cabin) ~ "T",
+    TRUE ~ "NONE"
 )))
 ```
 
@@ -299,8 +299,8 @@ In order to impute the Embarked feature we get help from the `Ticket.number` dis
 
 ```{r}
 knitr::kable(full %>% filter(is.na(Embarked)),"html") %>%
-        kable_styling() %>%
-        scroll_box(height = "220px")
+    kable_styling() %>%
+    scroll_box(height = "220px")
 ```
 
 ```{r, warning=FALSE}
@@ -322,7 +322,7 @@ Since the high number of missing values for the `Cabin` the feature is removed. 
 
 ```{r}
 full <- full %>% mutate(
-        HasCabin = if_else(is.na(Cabin), FALSE, TRUE)
+    HasCabin = if_else(is.na(Cabin), FALSE, TRUE)
 )
 full$Cabin <- NULL
 ```
@@ -337,11 +337,11 @@ Here again, since we only have one missing value, the mean among similar profile
 
 ```{r}
 knitr::kable(
-        full %>% 
+    full %>% 
         filter(!is.na(Fare),SibSp+Parch==0,HasCabin==FALSE,Sex=="male",Name.family.count==1,Embarked=="S",between(Age,50,70)),
-        "html") %>% 
-                kable_styling() %>%
-                scroll_box(height = "200px")
+    "html") %>% 
+    kable_styling() %>%
+    scroll_box(height = "200px")
 Fare.mean <- as.numeric(full %>% filter(!is.na(Fare),SibSp+Parch==0,HasCabin==FALSE,Sex=="male",Name.family.count==1,Embarked=="S",between(Age,50,70)) %>% summarise(mean(Fare)))
 ```
 
@@ -552,12 +552,12 @@ train.test <- train[-inTrain,]
 # OUTPUT
 # trainList: list of trained models
 train.list <- function(formula,df,modelTags, ...){
-        trainList <- lapply(modelTags, 
-                function(modelTag){
-                        train(form=as.formula(formula),data=df,method=modelTag, ...)
-                })
-        names(trainList) <- modelTags
-        trainList
+    trainList <- lapply(modelTags, 
+                        function(modelTag){
+                            train(form=as.formula(formula),data=df,method=modelTag, ...)
+                        })
+    names(trainList) <- modelTags
+    trainList
 }
 ```
 
@@ -570,9 +570,9 @@ train.list <- function(formula,df,modelTags, ...){
 # OUTPUT
 # dataframe of predictions
 predict.list <- function(models, newDF, ...){
-        as.data.frame(lapply(models, function(model){
-                predict(model,newDF,...)
-        }))
+    as.data.frame(lapply(models, function(model){
+        predict(model,newDF,...)
+    }))
 }
 ```
 
@@ -584,10 +584,10 @@ predict.list <- function(models, newDF, ...){
 # OUTPUT
 # list of confusion Matrixes
 confusionMatrix.list <- function(predictions, outcome, ...){
-        cmList <- lapply(predictions, function(prediction){
-                confusionMatrix(prediction,outcome,...)
-        })
-        setNames(cmList,names(cmList))
+    cmList <- lapply(predictions, function(prediction){
+        confusionMatrix(prediction,outcome,...)
+    })
+    setNames(cmList,names(cmList))
 }
 ```
 
@@ -598,13 +598,13 @@ confusionMatrix.list <- function(predictions, outcome, ...){
 # OUTPUT
 # dataframe of predictions
 modelResults.list <- function(models,metrics){
-        do.call(
-                bind_rows,
-                lapply(models, function(model){
-                        # print(model$results)
-                    res <- as.data.frame(model$results) %>% mutate(Algorithm=paste0("train_",model$method))
-                })
-        ) %>% group_by(Algorithm) %>% filter((Accuracy==max(Accuracy))) %>% slice(1) %>% select(c("Algorithm",metrics))
+    do.call(
+        bind_rows,
+        lapply(models, function(model){
+            # print(model$results)
+            res <- as.data.frame(model$results) %>% mutate(Algorithm=paste0("train_",model$method))
+        })
+    ) %>% group_by(Algorithm) %>% filter((Accuracy==max(Accuracy))) %>% slice(1) %>% select(c("Algorithm",metrics))
 }
 ```
 
@@ -656,10 +656,10 @@ model.rfSecondLayer <- train(Survived~.,data=df.prediction, method="rf", trContr
 
 ```{r}
 mode <- function(x){
-        names(which.max(
-                table(x) # frequency table
-        ) # column with max value
-        ) # names for the max column
+    names(which.max(
+        table(x) # frequency table
+    ) # column with max value
+    ) # names for the max column
 }
 ```
 
@@ -667,9 +667,9 @@ mode <- function(x){
 ## Ensamble method that uses a majority vote 
 ## x data.frame in input
 majorityVote <- function (x){
-        as.factor(
-                apply(x,1,mode)
-        )
+    as.factor(
+        apply(x,1,mode)
+    )
 }
 ```
 
@@ -678,7 +678,7 @@ modelTagsMaj <- c("svmRadial", "bayesglm", "kknn")
 
 df.prediction <- prediction.train.train %>% select(modelTagsMaj)
 prediction.train.train <- prediction.train.train %>%
-        mutate(majVote=majorityVote(df.prediction))
+    mutate(majVote=majorityVote(df.prediction))
 ```
 
 ## Model validation
@@ -707,7 +707,7 @@ prediction.train.test$rfSecondLayer <- predict(model.rfSecondLayer,df)
 ```{r}
 df.prediction <- prediction.train.test %>% select(modelTagsMaj)
 prediction.train.test <- prediction.train.test %>%
-        mutate(majVote=majorityVote(df.prediction))
+    mutate(majVote=majorityVote(df.prediction))
 ```
 
 ### Results
@@ -717,7 +717,7 @@ df <- train.test
 
 confusionMatrixes.test <- confusionMatrix.list(prediction.train.test,df$Survived)
 performance <- as.data.frame(sapply(confusionMatrixes.test, function(cm){
-        c(cm$byClass,cm$overall)
+    c(cm$byClass,cm$overall)
 })) %>% rownames_to_column(var = "metric") %>% filter(metric %in% c("Accuracy","AccuracyLower","AccuracyUpper","Sensitivity","Specificity","Balanced Accuracy"))
 
 # Results in Train
@@ -750,7 +750,7 @@ prediction.test$rfSecondLayer <- predict(model.rfSecondLayer,df.prediction)
 
 df.prediction <- prediction.test %>% select(modelTagsMaj)
 prediction.test <- prediction.test %>%
-        mutate(majVote=majorityVote(df.prediction))
+    mutate(majVote=majorityVote(df.prediction))
 ```
 
 ```{r,warning=FALSE}
