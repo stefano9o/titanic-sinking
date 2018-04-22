@@ -68,7 +68,10 @@ This is my first kernel and bellow the main points that characterize my work:
 ## Library import
 
 ```{r, message=FALSE}
+library(kableExtra)
 library(ggplot2) # Visualization
+library(tibble)
+library(tidyr)
 library(dplyr) # Data manipulation
 library(corrplot) # Correlattion plot
 library(pROC) # Roc curve
