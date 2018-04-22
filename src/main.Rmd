@@ -81,30 +81,30 @@ library(party)
 
 ## Importing and cleaning Data
 
-The train/test datasets are loaded in R:
-
 ```{r}
+# Importing train/test dataset in R
 train <- read.csv('../input/train.csv', header = TRUE, stringsAsFactors = FALSE, na.strings = c(""))
 train$Set = "train"
 test <- read.csv('../input/test.csv', header = TRUE,stringsAsFactors = FALSE, na.strings = c(""))
 test$Set = "test"
 
-# In order to streamline the process, the train and test datasets are binded
-test$Survived <- NA # this is needed in order make possible the binding
+# In order to streamline the cleaning process, the train and test datasets are binded. A dummy column is added in order to keep track of the original data source
+test$Survived <- NA
 full <- rbind(train,test)
 ```
 
-The following features need to be coerced into factor variable:
-
 ```{r}
-# Feature coercing
-full$Survived <- as.factor(full$Survived); origLevels <- levels(full$Survived); levels(full$Survived) <- c("dead","survived")
+# Coercing features from char to factor
 full$Sex <- as.factor(full$Sex)
 full$Embarked <- as.factor(full$Embarked)
 full$Pclass <- as.factor(full$Pclass)
+# The levels if the Survived feature (outcome) are temporarly changed. The orginal ones are kept in a variable
+full$Survived <- as.factor(full$Survived); origLevels <- levels(full$Survived); levels(full$Survived) <- c("dead","survived")
 ```
 
 ## Survival distribution
+
+The survivors distribution for each Pclass and sex is shown below:
 
 ```{r}
 g <- ggplot(filter(full,!is.na(Survived)),aes(Survived))
@@ -112,6 +112,8 @@ g <- g + geom_bar(colour = "black", aes(fill=Sex, Pclass),position="dodge")
 g <- g + labs(title = "Survival distribution", x = "Pclass", y = "# survied") + theme_bw()
 g
 ```
+
+At first glanch it seems that male in the third class have more chance to survive respect to the female in the same class.
 
 ## Missing value analysis:
 
@@ -131,10 +133,13 @@ g <- g + coord_flip() + theme_bw()
 g
 ```
 
+The cabin feature has almost 80% of NA values. Maybe the NA's here have the meaning of: no cabin. 
 
 ## Cleaning data
 
 ### Name: extracting Title and Family Name
+
+A bunch of entries from the `Name` feature:
 
 ```{r}
 head(full$Name)
@@ -142,17 +147,19 @@ head(full$Name)
 
 Each `Name` is of the form `String, Title. String`, where the first one is the family name. 
 
-The idea is to use the feature in order to:
+The idea behind this extraction is not to use them for training the model, but to use them in order to:
 + understand the family status (married or maiden)
 + wheater or not is part of the crew
-+ handle the NA for the `Age`
++ handle NA's for the `Age`
 
-Regular expressions have been used in order to exract the `Name.family` and `Name.title`
+Regular expressions are used in order to extract the `Name.family` and `Name.title`
 
 ```{r}
 full$Name.family <- gsub(pattern = "([\\w|\\-| |']*), ([\\w| ]*\\.) (.*)", x=full$Name, replacement="\\1", ignore.case=TRUE, perl = TRUE)
 full$Name.title <- gsub(pattern = "([\\w|\\-| |']*), ([\\w| ]*\\.) (.*)", x=full$Name, replacement="\\2", ignore.case=TRUE, perl = TRUE)
 ```
+
+#### Feature engineering: family name count:
 
 ```{r}
 Name.family <- full %>% group_by(Name.family) %>% summarise(Name.family.count = n())
@@ -165,7 +172,7 @@ knitr::kable(table(full$Name.title),"html") %>%
         scroll_box(height = "200px")
 ```
 
-The less frequent titles are pooled in the more common ones in order to avoid overfitting:
+As we can see from the last output, many titles have only few occurence. The less frequent titles are pooled in the more common ones:
 
 ```{r}
 full <- full %>% mutate(
@@ -251,6 +258,13 @@ g
 
 ### Age
 
+Two different imputation techniques are tried:
+
++ fit a tree-based model using `Age` and `Title`;
++ replacing with the median age inside inside the Title group of appartenance.
+
+### Tree based
+
 ```{r}
 df <- full %>% select(Age,Title) %>% filter(!is.na(Age))
 
@@ -260,6 +274,8 @@ plot(fit, main="Age decision tree for imputation")
 full$Age.ctree <- as.vector(predict(fit,full))
 full <- full %>% mutate(Age.imputed=ifelse(is.na(Age),Age.ctree,Age))
 ```
+
+### Median inside the Title group
 
 By looking at the `Age` distribution for each `Title`:
 
@@ -285,12 +301,16 @@ In order to impute the Embarked feature we get help from the `Ticket.number` dis
 knitr::kable(full %>% filter(is.na(Embarked)),"html") %>%
         kable_styling() %>%
         scroll_box(height = "220px")
+```
 
-g <- ggplot(data = filter(full,!is.na(Embarked)), aes(Embarked,Ticket.number))
+```{r, warning=FALSE}
+g <- ggplot(data = full, aes(Embarked,Ticket.number))
 g <- g + geom_boxplot(aes(fill = Embarked), alpha = 0.5) + ylim(0, 400000)
 g <- g + theme_bw() + labs(title = "Ticket number distribution for each Embarked", x = "Embarked", y = "Ticket.number")
 g
 ```
+
+Since we only have few missing NA, we decided to use a naive approch: replacing NA's with S.
 
 ```{r}
 full$Embarked <- as.factor(if_else(is.na(full$Embarked),"S",as.character(full$Embarked)))
@@ -298,11 +318,11 @@ full$Embarked <- as.factor(if_else(is.na(full$Embarked),"S",as.character(full$Em
 
 ### Cabin
 
-Since the high number of missing values for the `Cabin` feature we're going to remove it:
+Since the high number of missing values for the `Cabin` the feature is removed. A `hasCabin` feature is created:
 
 ```{r}
 full <- full %>% mutate(
-        hasCabin = if_else(is.na(Cabin), FALSE, TRUE)
+        HasCabin = if_else(is.na(Cabin), FALSE, TRUE)
 )
 full$Cabin <- NULL
 ```
@@ -310,14 +330,37 @@ full$Cabin <- NULL
 ### Fare
 
 ```{r}
-full <- full %>% mutate(Fare=ifelse(is.na(Fare),mean(Fare,na.rm = TRUE),Fare))
+full %>% filter(is.na(Fare))
 ```
 
-## Fix
+Here again, since we only have one missing value, the mean among similar profiles is used for the imputation:
+
+```{r}
+knitr::kable(
+        full %>% 
+        filter(!is.na(Fare),SibSp+Parch==0,HasCabin==FALSE,Sex=="male",Name.family.count==1,Embarked=="S",between(Age,50,70)),
+        "html") %>% 
+                kable_styling() %>%
+                scroll_box(height = "200px")
+Fare.mean <- as.numeric(full %>% filter(!is.na(Fare),SibSp+Parch==0,HasCabin==FALSE,Sex=="male",Name.family.count==1,Embarked=="S",between(Age,50,70)) %>% summarise(mean(Fare)))
+```
+
+Fare mean among the similar profiles:
+
+```{r}
+Fare.mean
+
+```
+
+```{r}
+full <- full %>% mutate(Fare=ifelse(is.na(Fare),Fare.mean,Fare))
+```
+
+## Data fix
 
 ### ParCh and SibSp
 
-https://www.kaggle.com/c/titanic/discussion/39787
+As discussde here https://www.kaggle.com/c/titanic/discussion/39787, some well-known biases are fixed.
 
 ```{r}
 full$SibSp[full$PassengerId==280] <- 0
@@ -325,11 +368,6 @@ full$Parch[full$PassengerId==280] <- 2
 full$SibSp[full$PassengerId==1284] <- 1
 full$Parch[full$PassengerId==1284] <- 1
 ```
-
-```{r}
-full %>% select(PassengerId,Age,Parch,SibSp,Sex) %>% filter(Parch > 0) %>% arrange(Age)
-```
-
 
 # Feature engineering
 
@@ -457,8 +495,8 @@ full <- full %>% mutate(Fare.group=as.factor(ifelse(Fare.per.Person>18,"high","l
 
 
 ```{r}
-full %>% filter(between(Fare.per.Person,20,35),Survived=="dead",hasCabin==TRUE)
-full %>% filter(hasCabin==TRUE)
+full %>% filter(between(Fare.per.Person,20,35),Survived=="dead",HasCabin==TRUE)
+full %>% filter(HasCabin==TRUE)
 ```
 
 ```{r}
@@ -485,7 +523,7 @@ The following features will be included in the model:
 
 ```{r}
 # Pclass Title AnySurvivor Age Age.bin Sex IsMale is3dClass Survivors.percentage Fare.group
-train <- train %>% select(AnySurvivor, Survived, Age.bin, Sex, Pclass, Fare.group)
+train <- train %>% select(Survived, AnySurvivor, Age.bin, Sex, Pclass, Fare.group)
 ```
 
 # Modeling
@@ -558,12 +596,14 @@ confusionMatrix.list <- function(predictions, outcome, ...){
 df <- train.train
 modelTags <- c("rf","svmRadial","pcaNNet","kknn","bayesglm","xgbLinear")
 ctrl <- trainControl(method = "cv", number = 20) # cross validation using 10-fold method
-prePrcocess <- c("scale","center")
+prePrcocess <- c("scale","center") # BoxCox
 
 set.seed(381028)
 
 models.train.train <- train.list(Survived~., df, modelTags, trControl=ctrl, preProc=prePrcocess, trace = FALSE)
 ```
+
+The prediction of each model is arranged in  a list:
 
 ```{r, warning=FALSE}
 df = train.train
@@ -573,12 +613,16 @@ prediction.train.train <- predict.list(models.train.train,df)
 
 ## Model Comparison
 
+A correlation matrix of the models i shown below:
+
 ```{r}
 M <- cor(sapply(prediction.train.train,as.numeric))
 corrplot.mixed(M)
 ```
 
 ### Ensambling 1: stacking
+
+Here we're choosing a subset og the traine model which is less corraletd as possible, and all the prediction for those model are used as predictors for `Random forest` which is known being one of the most model for this competion:
 
 ```{r}
 # firstLayer <- c("kknn","bayesglm","svmRadial","xgbLinear")
@@ -634,7 +678,7 @@ prediction.train.test <- predict.list(models.train.train,df)
 ## Stacked model prediction
 
 ```{r}
-df <- prediction.train.test %>% select(firstLayer) %>% mutate(Survived = df$Survived)
+df <- prediction.train.test %>% select(firstLayer) %>% mutate(Survived = train.test$Survived)
 prediction.train.test$rfSecondLayer <- predict(model.rfSecondLayer,df)
 ```
 
