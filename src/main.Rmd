@@ -663,30 +663,6 @@ varImp(models.train.train$rf,scale = FALSE)
 varImp(model.rfSecondLayer,scale = FALSE)
 ```
 
-## Training using the whole train set
-
-# ```{r}
-# df <- train
-# 
-# set.seed(47382)
-# 
-# # Train
-# models.train <- train.list(Survived~., df, modelTags, trControl=ctrl, trace = FALSE)
-# 
-# # Predict
-# prediction.train <- predict.list(models.train,df)
-# 
-# # Stacking
-# df.prediction <- prediction.train %>% select(firstLayer) %>% mutate(Survived = df$Survived)
-# model.rfSecondLayer <- train(Survived~.,data=df.prediction, method="rf", trControl = ctrl)
-# prediction.train$rfSecondLayer <- predict(model.rfSecondLayer,df.prediction)
-# 
-# # Majority vote
-# df.prediction <- prediction.train %>% select(modelTagsMaj)
-# prediction.train <- prediction.train %>%
-#         mutate(majVote=majorityVote(df.prediction))
-# ```
-
 # Predict with the test dataset
 
 ```{r}
