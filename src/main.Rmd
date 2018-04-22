@@ -160,7 +160,9 @@ full <- inner_join(full,Name.family, by = "Name.family")
 ```
 
 ```{r}
-table(full$Name.title)
+knitr::kable(table(full$Name.title),"html") %>%
+        kable_styling() %>%
+        scroll_box(height = "200px")
 ```
 
 The less frequent titles are pooled in the more common ones in order to avoid overfitting:
@@ -280,7 +282,9 @@ full <- full %>% mutate(Age = if_else(is.na(Age),Age.median,Age))
 In order to impute the Embarked feature we get help from the `Ticket.number` distribution in each `Embarked` group: 
 
 ```{r}
-full[is.na(full$Embarked),]
+knitr::kable(full %>% filter(is.na(Embarked)),"html") %>%
+        kable_styling() %>%
+        scroll_box(height = "220px")
 
 g <- ggplot(data = filter(full,!is.na(Embarked)), aes(Embarked,Ticket.number))
 g <- g + geom_boxplot(aes(fill = Embarked), alpha = 0.5) + ylim(0, 400000)
