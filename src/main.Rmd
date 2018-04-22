@@ -480,7 +480,7 @@ full <- full %>% mutate(Group.dim = cut(Group.size, breaks = c(1,2,5,12), labels
 ```
 
 ```{r}
-g <- ggplot(train,aes(hasCabin,Fare.per.Person))
+g <- ggplot(train,aes(HasCabin,Fare.per.Person))
 g <- g + geom_violin(aes(fill=Survived),alpha=.5,kernel = "gaussian")
 g <- g + coord_cartesian(ylim = c(0, 80))
 # g <- g + annotate(geom = "text", x = 10, y = .28, label = max(..count..))
@@ -587,10 +587,28 @@ confusionMatrix.list <- function(predictions, outcome, ...){
         cmList <- lapply(predictions, function(prediction){
                 confusionMatrix(prediction,outcome,...)
         })
-        names(cmList) <- names(predictions)
-        cmList
+        setNames(cmList,names(cmList))
 }
 ```
+
+```{r}
+# INPUT
+# models: list of caret models
+# metrics: list of metric to be selected from model$results
+# OUTPUT
+# dataframe of predictions
+modelResults.list <- function(models,metrics){
+        do.call(
+                bind_rows,
+                lapply(models, function(model){
+                        # print(model$results)
+                    res <- as.data.frame(model$results) %>% mutate(Algorithm=paste0("train_",model$method))
+                })
+        ) %>% group_by(Algorithm) %>% filter((Accuracy==max(Accuracy))) %>% slice(1) %>% select(c("Algorithm",metrics))
+}
+```
+
+Let's train a bunch of models and arrange them in a list:
 
 ```{r}
 df <- train.train
@@ -601,6 +619,8 @@ prePrcocess <- c("scale","center") # BoxCox
 set.seed(381028)
 
 models.train.train <- train.list(Survived~., df, modelTags, trControl=ctrl, preProc=prePrcocess, trace = FALSE)
+
+results <- modelResults.list(models.train.train,c("Accuracy","AccuracySD","Kappa","KappaSD"))
 ```
 
 The prediction of each model is arranged in  a list:
@@ -698,10 +718,12 @@ df <- train.test
 confusionMatrixes.test <- confusionMatrix.list(prediction.train.test,df$Survived)
 performance <- as.data.frame(sapply(confusionMatrixes.test, function(cm){
         c(cm$byClass,cm$overall)
-}))
+})) %>% rownames_to_column(var = "metric") %>% filter(metric %in% c("Accuracy","AccuracyLower","AccuracyUpper","Sensitivity","Specificity","Balanced Accuracy"))
 
-model.rfSecondLayer$results
-performance[c("Accuracy","AccuracyLower","AccuracyUpper","Sensitivity","Specificity","Balanced Accuracy"),]
+# Results in Train
+results
+# Results in Test
+performance
 ```
 
 ## Variable importance
