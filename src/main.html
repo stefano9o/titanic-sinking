@@ -342,6 +342,7 @@ library(party)</code></pre>
 <div id="importing-and-cleaning-data" class="section level2">
 <h2>Importing and cleaning Data</h2>
 <pre class="r"><code># Importing train/test dataset in R
+# train &lt;- read.csv('../input/train.csv', header = TRUE, stringsAsFactors = FALSE, na.strings = c(&quot;&quot;))
 train &lt;- read.csv('../input/train.csv', header = TRUE, stringsAsFactors = FALSE, na.strings = c(&quot;&quot;))
 train$Set = &quot;train&quot;
 test &lt;- read.csv('../input/test.csv', header = TRUE,stringsAsFactors = FALSE, na.strings = c(&quot;&quot;))
