@@ -38,3 +38,7 @@ vignettes/*.pdf
 
 # Generated file
 *.pdf
+
+# R cache files
+src/main_cache
+src/main_files
