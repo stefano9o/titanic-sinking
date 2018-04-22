@@ -600,9 +600,10 @@ confusionMatrix.list <- function(predictions, outcome, ...){
 modelResults.list <- function(models,metrics){
     do.call(
         bind_rows,
-        lapply(models, function(model){
-            # print(model$results)
-            res <- as.data.frame(model$results) %>% mutate(Algorithm=paste0("train_",model$method))
+        lapply(seq_along(models), function(index){
+            model <- models[[index]]
+            name <- names(models)[index]
+            res <- as.data.frame(model$results) %>% mutate(Algorithm=paste0("train_",name))
         })
     ) %>% group_by(Algorithm) %>% filter((Accuracy==max(Accuracy))) %>% slice(1) %>% select(c("Algorithm",metrics))
 }
@@ -650,6 +651,10 @@ firstLayer <- c("kknn","bayesglm")
 df.prediction <- prediction.train.train %>% select(firstLayer) %>% mutate(Survived = train.train$Survived)
 
 model.rfSecondLayer <- train(Survived~.,data=df.prediction, method="rf", trControl = ctrl)
+
+temp <- models.train.train
+temp$rfSecondLayer <- model.rfSecondLayer
+results <- modelResults.list(temp,c("Accuracy","AccuracySD","Kappa","KappaSD"))
 ```
 
 ### Ensambling 2: majority vote
